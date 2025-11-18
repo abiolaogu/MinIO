@@ -1,3 +1,5 @@
+// +build v2
+
 // enterprise/replication/replication_engine_v2.go
 // Ultra-High-Performance Replication Engine with Connection Pooling and Batching
 package replication

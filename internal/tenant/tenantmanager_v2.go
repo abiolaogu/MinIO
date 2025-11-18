@@ -1,3 +1,5 @@
+// +build v2
+
 // enterprise/multitenancy/tenantmanager_v2.go
 // Ultra-High-Performance Tenant Manager with Sharding, Caching, and Async Quotas
 package tenant

@@ -56,9 +56,9 @@ fi
 echo ""
 echo "4. Validating Docker configurations..."
 
-if [ -f "Dockerfile.production" ]; then
+if [ -f "deployments/docker/Dockerfile" ]; then
     # Check for non-root user
-    if grep -q "USER minio" Dockerfile.production; then
+    if grep -q "USER minio" deployments/docker/Dockerfile; then
         print_status 0 "Dockerfile uses non-root user"
     else
         print_status 1 "Dockerfile may be running as root"
@@ -71,7 +71,7 @@ if [ -f "Dockerfile.production" ]; then
         print_status 1 "Missing security flags in docker-compose"
     fi
 else
-    print_status 1 "Dockerfile.production not found"
+    print_status 1 "deployments/docker/Dockerfile not found"
 fi
 
 # 5. Check for exposed ports
