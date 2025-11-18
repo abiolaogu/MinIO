@@ -1,5 +1,5 @@
 // enterprise/multitenancy/tenantmanager.go
-package multitenancy
+package tenant
 
 import (
 	"context"

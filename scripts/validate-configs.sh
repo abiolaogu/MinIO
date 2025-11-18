@@ -27,60 +27,60 @@ print_status() {
 # 1. Validate Dockerfile
 echo "1. Validating Dockerfile..."
 
-if [ -f "Dockerfile.production" ]; then
-    if grep -q "FROM" Dockerfile.production && grep -q "WORKDIR" Dockerfile.production; then
-        print_status 0 "Dockerfile.production structure valid"
+if [ -f "deployments/docker/Dockerfile" ]; then
+    if grep -q "FROM" deployments/docker/Dockerfile && grep -q "WORKDIR" deployments/docker/Dockerfile; then
+        print_status 0 "deployments/docker/Dockerfile structure valid"
     else
-        print_status 1 "Dockerfile.production missing required instructions"
+        print_status 1 "deployments/docker/Dockerfile missing required instructions"
     fi
 
-    if [ $(grep -c "^FROM" Dockerfile.production) -gt 1 ]; then
+    if [ $(grep -c "^FROM" deployments/docker/Dockerfile) -gt 1 ]; then
         print_status 0 "Multi-stage build detected"
     fi
 
-    if grep -q "HEALTHCHECK" Dockerfile.production; then
+    if grep -q "HEALTHCHECK" deployments/docker/Dockerfile; then
         print_status 0 "Health check configured"
     fi
 else
-    print_status 1 "Dockerfile.production not found"
+    print_status 1 "deployments/docker/Dockerfile not found"
 fi
 
 # 2. Validate environment file
 echo ""
 echo "2. Validating environment configuration..."
 
-if [ -f ".env.example" ]; then
-    print_status 0 ".env.example exists"
+if [ -f "configs/.env.example" ]; then
+    print_status 0 "configs/.env.example exists"
 else
-    print_status 1 ".env.example not found"
+    print_status 1 "configs/.env.example not found"
 fi
 
 # 3. Validate HAProxy config
 echo ""
 echo "3. Validating HAProxy configuration..."
 
-if [ -f "haproxy.cfg" ]; then
-    if grep -q "^global" haproxy.cfg && grep -q "^defaults" haproxy.cfg; then
+if [ -f "deployments/docker/haproxy.cfg" ]; then
+    if grep -q "^global" deployments/docker/haproxy.cfg && grep -q "^defaults" deployments/docker/haproxy.cfg; then
         print_status 0 "HAProxy configuration valid"
     else
         print_status 1 "HAProxy configuration invalid"
     fi
 else
-    print_status 1 "haproxy.cfg not found"
+    print_status 1 "deployments/docker/haproxy.cfg not found"
 fi
 
 # 4. Validate Prometheus config
 echo ""
 echo "4. Validating Prometheus configuration..."
 
-if [ -f "prometheus.yml" ]; then
-    if grep -q "scrape_configs:" prometheus.yml; then
+if [ -f "deployments/docker/prometheus.yml" ]; then
+    if grep -q "scrape_configs:" deployments/docker/prometheus.yml; then
         print_status 0 "Prometheus configuration valid"
     else
         print_status 1 "Prometheus configuration invalid"
     fi
 else
-    print_status 1 "prometheus.yml not found"
+    print_status 1 "deployments/docker/prometheus.yml not found"
 fi
 
 # 5. Validate Go module
