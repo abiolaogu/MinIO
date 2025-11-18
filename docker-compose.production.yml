@@ -1,0 +1,434 @@
+version: '3.9'
+
+# Ultra-High-Performance MinIO Production Stack
+# Features: High availability, monitoring, security, auto-scaling
+
+services:
+  # ============================================================
+  # MinIO Cluster (4 nodes for high availability)
+  # ============================================================
+  minio1:
+    image: minio-enterprise:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: runtime
+    container_name: minio1
+    hostname: minio1
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_DISTRIBUTED_MODE_ENABLED: "true"
+      MINIO_DISTRIBUTED_NODES: "minio{1...4}/data"
+      MINIO_PROMETHEUS_URL: "http://prometheus:9090"
+      MINIO_CACHE_DRIVES: "/cache"
+      MINIO_CACHE_QUOTA: 80
+      GOMAXPROCS: 8
+    volumes:
+      - minio1-data:/data
+      - minio1-cache:/cache
+      - ./configs:/config:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          cpus: '4'
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+
+  minio2:
+    image: minio-enterprise:latest
+    container_name: minio2
+    hostname: minio2
+    restart: unless-stopped
+    networks:
+      - minio-network
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_DISTRIBUTED_MODE_ENABLED: "true"
+      MINIO_DISTRIBUTED_NODES: "minio{1...4}/data"
+      GOMAXPROCS: 8
+    volumes:
+      - minio2-data:/data
+      - minio2-cache:/cache
+      - ./configs:/config:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+
+  minio3:
+    image: minio-enterprise:latest
+    container_name: minio3
+    hostname: minio3
+    restart: unless-stopped
+    networks:
+      - minio-network
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_DISTRIBUTED_MODE_ENABLED: "true"
+      MINIO_DISTRIBUTED_NODES: "minio{1...4}/data"
+      GOMAXPROCS: 8
+    volumes:
+      - minio3-data:/data
+      - minio3-cache:/cache
+      - ./configs:/config:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+
+  minio4:
+    image: minio-enterprise:latest
+    container_name: minio4
+    hostname: minio4
+    restart: unless-stopped
+    networks:
+      - minio-network
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_DISTRIBUTED_MODE_ENABLED: "true"
+      MINIO_DISTRIBUTED_NODES: "minio{1...4}/data"
+      GOMAXPROCS: 8
+    volumes:
+      - minio4-data:/data
+      - minio4-cache:/cache
+      - ./configs:/config:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+
+  # ============================================================
+  # HAProxy Load Balancer
+  # ============================================================
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: haproxy
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"  # Stats
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./certs:/certs:ro
+    depends_on:
+      - minio1
+      - minio2
+      - minio3
+      - minio4
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # PostgreSQL - Metadata storage
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - minio-network
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-minio_enterprise}
+      POSTGRES_USER: ${POSTGRES_USER:-minio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-minio_secure_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=2GB
+      -c effective_cache_size=6GB
+      -c maintenance_work_mem=512MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=10MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+
+  # ============================================================
+  # Redis - Caching layer
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - minio-network
+    command: >
+      redis-server
+      --maxmemory 4gb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+      --appendfsync everysec
+      --tcp-backlog 511
+      --timeout 0
+      --tcp-keepalive 300
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+
+  # ============================================================
+  # Prometheus - Metrics collection
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=50GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+
+  # ============================================================
+  # Grafana - Visualization
+  # ============================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-clock-panel
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # ============================================================
+  # Jaeger - Distributed tracing
+  # ============================================================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"  # UI
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    volumes:
+      - jaeger-data:/badger
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+
+  # ============================================================
+  # NATS - Message broker for async operations
+  # ============================================================
+  nats:
+    image: nats:alpine
+    container_name: nats
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "4222:4222"
+      - "8222:8222"  # Monitoring
+    command: >
+      --jetstream
+      --max_payload 8MB
+      --max_pending 100MB
+      -m 8222
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  minio-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  minio1-data:
+    driver: local
+  minio1-cache:
+    driver: local
+  minio2-data:
+    driver: local
+  minio2-cache:
+    driver: local
+  minio3-data:
+    driver: local
+  minio3-cache:
+    driver: local
+  minio4-data:
+    driver: local
+  minio4-cache:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  jaeger-data:
+    driver: local
+  nats-data:
+    driver: local
+
+# ============================================================
+# Usage:
+# docker-compose -f docker-compose.production.yml up -d
+# docker-compose -f docker-compose.production.yml logs -f
+# docker-compose -f docker-compose.production.yml down -v
+# ============================================================
