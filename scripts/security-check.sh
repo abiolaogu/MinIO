@@ -65,7 +65,7 @@ if [ -f "deployments/docker/Dockerfile" ]; then
     fi
 
     # Check for security flags
-    if grep -q "no-new-privileges" docker-compose.production.yml 2>/dev/null; then
+    if grep -q "no-new-privileges" deployments/docker/docker-compose.production.yml 2>/dev/null; then
         print_status 0 "Docker containers use security flags"
     else
         print_status 1 "Missing security flags in docker-compose"
@@ -138,7 +138,7 @@ fi
 # 10. Check resource limits
 echo ""
 echo "10. Checking resource limits..."
-if grep -E "resources:|limits:|requests:" docker-compose.production.yml 2>/dev/null | head -1 > /dev/null; then
+if grep -E "resources:|limits:|requests:" deployments/docker/docker-compose.production.yml 2>/dev/null | head -1 > /dev/null; then
     print_status 0 "Resource limits configured in docker-compose"
 else
     print_status 1 "No resource limits in docker-compose"
