@@ -1,5 +1,5 @@
 // enterprise/observability/monitoring.go
-package observability
+package monitoring
 
 import (
 	"context"

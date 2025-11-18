@@ -1,0 +1,92 @@
+# MinIO Enterprise .gitignore
+
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+minio-enterprise
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+coverage.out
+
+# Go workspace file
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+!*.example
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Build artifacts
+build/output/
+dist/
+
+# Data directories
+data/
+cache/
+/minio-data/
+
+# Temporary files
+tmp/
+temp/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Profiling
+*.prof
+*.pprof
+cpu.prof
+mem.prof
+heap.prof
+
+# Vendor (if not using modules)
+vendor/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated files
+*_gen.go
+*.pb.go
+
+# Certificates (except examples)
+*.crt
+*.cert
+!example.crt
+
+# Node modules (if any frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
