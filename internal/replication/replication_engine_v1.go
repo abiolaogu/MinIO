@@ -1,3 +1,5 @@
+// +build v2
+
 // enterprise/replication/replication_engine.go
 package replication
 

@@ -1,3 +1,5 @@
+// +build v2
+
 // enterprise/multitenancy/tenantmanager.go
 package tenant
 

@@ -56,22 +56,22 @@ fi
 echo ""
 echo "4. Validating Docker configurations..."
 
-if [ -f "Dockerfile.production" ]; then
+if [ -f "deployments/docker/Dockerfile" ]; then
     # Check for non-root user
-    if grep -q "USER minio" Dockerfile.production; then
+    if grep -q "USER minio" deployments/docker/Dockerfile; then
         print_status 0 "Dockerfile uses non-root user"
     else
         print_status 1 "Dockerfile may be running as root"
     fi
 
     # Check for security flags
-    if grep -q "no-new-privileges" docker-compose.production.yml 2>/dev/null; then
+    if grep -q "no-new-privileges" deployments/docker/docker-compose.production.yml 2>/dev/null; then
         print_status 0 "Docker containers use security flags"
     else
         print_status 1 "Missing security flags in docker-compose"
     fi
 else
-    print_status 1 "Dockerfile.production not found"
+    print_status 1 "deployments/docker/Dockerfile not found"
 fi
 
 # 5. Check for exposed ports
@@ -138,7 +138,7 @@ fi
 # 10. Check resource limits
 echo ""
 echo "10. Checking resource limits..."
-if grep -E "resources:|limits:|requests:" docker-compose.production.yml 2>/dev/null | head -1 > /dev/null; then
+if grep -E "resources:|limits:|requests:" deployments/docker/docker-compose.production.yml 2>/dev/null | head -1 > /dev/null; then
     print_status 0 "Resource limits configured in docker-compose"
 else
     print_status 1 "No resource limits in docker-compose"
