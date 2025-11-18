@@ -1,0 +1,4 @@
+# Trivy Vulnerability Ignore File
+# Add CVE IDs that are false positives or accepted risks
+
+# Example: CVE-2023-12345
