@@ -1,0 +1,567 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "minio-security",
+    "title": "MinIO Enterprise - Security Dashboard",
+    "tags": ["minio", "security", "authentication", "audit"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "type": "graph",
+        "title": "Authentication Attempts (success vs failure)",
+        "targets": [
+          {
+            "expr": "rate(minio_auth_attempts_total{status=\"success\"}[1m])",
+            "legendFormat": "Successful - {{instance}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(minio_auth_attempts_total{status=\"failure\"}[1m])",
+            "legendFormat": "Failed - {{instance}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Attempts/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [10],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["B", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Authentication Failure Rate",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Authentication Success Rate",
+        "targets": [
+          {
+            "expr": "100 * sum(rate(minio_auth_attempts_total{status=\"success\"}[5m])) / sum(rate(minio_auth_attempts_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "text": {},
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": null,
+                  "color": "red"
+                },
+                {
+                  "value": 90,
+                  "color": "yellow"
+                },
+                {
+                  "value": 95,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "type": "graph",
+        "title": "Access Patterns by User",
+        "targets": [
+          {
+            "expr": "rate(minio_access_requests_total[1m])",
+            "legendFormat": "{{user}} - {{method}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "type": "graph",
+        "title": "Access Patterns by IP Address",
+        "targets": [
+          {
+            "expr": "rate(minio_access_requests_total[1m])",
+            "legendFormat": "{{source_ip}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "type": "graph",
+        "title": "Authorization Failures by Resource",
+        "targets": [
+          {
+            "expr": "rate(minio_authorization_failures_total[1m])",
+            "legendFormat": "{{resource}} - {{user}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Failures/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Authorization Failure Rate"
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "type": "graph",
+        "title": "Suspicious Activity Detection",
+        "targets": [
+          {
+            "expr": "rate(minio_suspicious_activity_total[1m])",
+            "legendFormat": "{{type}} - {{source_ip}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Events/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "1m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Suspicious Activity Detected"
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 24
+        },
+        "type": "table",
+        "title": "Recent Authentication Failures (Last 100)",
+        "targets": [
+          {
+            "expr": "topk(100, minio_auth_failures_recent)",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {
+                "Time": 0,
+                "user": 1,
+                "source_ip": 2,
+                "reason": 3
+              },
+              "renameByName": {
+                "user": "User",
+                "source_ip": "Source IP",
+                "reason": "Failure Reason",
+                "Time": "Timestamp"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "TLS/SSL Connection Success Rate",
+        "targets": [
+          {
+            "expr": "100 * rate(minio_tls_connections_success_total[1m]) / rate(minio_tls_connections_total[1m])",
+            "legendFormat": "TLS Success Rate %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Success Rate",
+            "max": 100,
+            "min": 0
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "Certificate Expiry Status",
+        "targets": [
+          {
+            "expr": "(minio_certificate_expiry_timestamp - time()) / 86400",
+            "legendFormat": "{{certificate}} - Days Until Expiry",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "days",
+            "label": "Days Remaining"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [30],
+                "type": "lt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "1h", "now"]
+              },
+              "reducer": {
+                "type": "min"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Certificate Expiring Soon"
+        }
+      },
+      {
+        "id": 10,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "type": "graph",
+        "title": "Security Scan Results",
+        "targets": [
+          {
+            "expr": "minio_security_scan_vulnerabilities",
+            "legendFormat": "{{severity}} - {{scanner}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Vulnerability Count"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "max"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Security Vulnerabilities Detected"
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "type": "graph",
+        "title": "Audit Log Events (by severity)",
+        "targets": [
+          {
+            "expr": "rate(minio_audit_log_events_total[1m])",
+            "legendFormat": "{{severity}} - {{event_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Events/sec"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 40
+        },
+        "type": "graph",
+        "title": "Rate Limit Violations",
+        "targets": [
+          {
+            "expr": "rate(minio_rate_limit_violations_total[1m])",
+            "legendFormat": "{{user}} - {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Violations/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [10],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Rate Limit Violations"
+        }
+      },
+      {
+        "id": 13,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 40
+        },
+        "type": "stat",
+        "title": "Active Security Incidents",
+        "targets": [
+          {
+            "expr": "sum(minio_security_incidents_active)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": null,
+                  "color": "green"
+                },
+                {
+                  "value": 1,
+                  "color": "yellow"
+                },
+                {
+                  "value": 5,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus"
+        },
+        {
+          "name": "instance",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "label_values(minio_auth_attempts_total, instance)",
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "user",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "label_values(minio_access_requests_total, user)",
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "$datasource",
+          "enable": true,
+          "expr": "ALERTS{alertname=~\".*Security.*\"}",
+          "iconColor": "red",
+          "name": "Security Alerts",
+          "tagKeys": "alertname,severity",
+          "textFormat": "{{alertname}}: {{instance}}",
+          "titleFormat": "Security Alert"
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

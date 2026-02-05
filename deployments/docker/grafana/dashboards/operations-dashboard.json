@@ -1,0 +1,766 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "minio-operations",
+    "title": "MinIO Enterprise - Operations Dashboard",
+    "tags": ["minio", "operations", "infrastructure", "system"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Cluster Health Status",
+        "targets": [
+          {
+            "expr": "minio_cluster_health_status",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {
+                    "text": "Down",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "Degraded",
+                    "color": "yellow"
+                  },
+                  "2": {
+                    "text": "Healthy",
+                    "color": "green"
+                  }
+                }
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": null,
+                  "color": "red"
+                },
+                {
+                  "value": 1,
+                  "color": "yellow"
+                },
+                {
+                  "value": 2,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Uptime",
+        "targets": [
+          {
+            "expr": "time() - minio_process_start_time_seconds",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": null,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Active Nodes",
+        "targets": [
+          {
+            "expr": "count(up{job=\"minio\"} == 1)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": null,
+                  "color": "red"
+                },
+                {
+                  "value": 2,
+                  "color": "yellow"
+                },
+                {
+                  "value": 4,
+                  "color": "green"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "type": "stat",
+        "title": "Total Error Count (Last 5m)",
+        "targets": [
+          {
+            "expr": "sum(increase(minio_errors_total[5m]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "value": null,
+                  "color": "green"
+                },
+                {
+                  "value": 10,
+                  "color": "yellow"
+                },
+                {
+                  "value": 50,
+                  "color": "red"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "type": "graph",
+        "title": "CPU Usage (%)",
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "{{instance}} - CPU Usage",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "CPU Usage",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [85],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High CPU Usage",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "type": "graph",
+        "title": "Memory Usage (%)",
+        "targets": [
+          {
+            "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))",
+            "legendFormat": "{{instance}} - Memory Usage",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Memory Usage",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [90],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Memory Usage"
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "type": "graph",
+        "title": "Disk I/O (Read/Write MB/s)",
+        "targets": [
+          {
+            "expr": "rate(node_disk_read_bytes_total[1m]) / 1048576",
+            "legendFormat": "{{instance}} - Read MB/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(node_disk_written_bytes_total[1m]) / 1048576",
+            "legendFormat": "{{instance}} - Write MB/s",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "MBs",
+            "label": "MB/s"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "type": "graph",
+        "title": "Disk Space Usage (%)",
+        "targets": [
+          {
+            "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/data\"} / node_filesystem_size_bytes{mountpoint=\"/data\"} * 100)",
+            "legendFormat": "{{instance}} - Disk Usage",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Disk Usage",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [85],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Disk Usage"
+        }
+      },
+      {
+        "id": 9,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "Network Traffic (MB/s)",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[1m]) / 1048576",
+            "legendFormat": "{{instance}} - Receive MB/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total[1m]) / 1048576",
+            "legendFormat": "{{instance}} - Transmit MB/s",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "MBs",
+            "label": "MB/s"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "Network Errors & Drops",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_errs_total[1m])",
+            "legendFormat": "{{instance}} - Receive Errors",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(node_network_transmit_errs_total[1m])",
+            "legendFormat": "{{instance}} - Transmit Errors",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(node_network_receive_drop_total[1m])",
+            "legendFormat": "{{instance}} - Receive Drops",
+            "refId": "C"
+          },
+          {
+            "expr": "rate(node_network_transmit_drop_total[1m])",
+            "legendFormat": "{{instance}} - Transmit Drops",
+            "refId": "D"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Errors/Drops per second"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [10],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "or"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Network Errors Detected"
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "type": "graph",
+        "title": "Goroutine Count",
+        "targets": [
+          {
+            "expr": "go_goroutines{job=\"minio\"}",
+            "legendFormat": "{{instance}} - Goroutines",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Goroutines"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [10000],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Goroutine Count"
+        }
+      },
+      {
+        "id": 12,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "type": "graph",
+        "title": "Garbage Collection Duration (ms)",
+        "targets": [
+          {
+            "expr": "rate(go_gc_duration_seconds_sum{job=\"minio\"}[1m]) * 1000",
+            "legendFormat": "{{instance}} - GC Duration",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Duration"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 40
+        },
+        "type": "graph",
+        "title": "PostgreSQL Connections",
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends{datname=\"minio_enterprise\"}",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Connections"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [180],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High PostgreSQL Connection Count"
+        }
+      },
+      {
+        "id": 14,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 40
+        },
+        "type": "graph",
+        "title": "Redis Memory Usage (MB)",
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes / 1048576",
+            "legendFormat": "Memory Used MB",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "MB",
+            "label": "Memory"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 40
+        },
+        "type": "graph",
+        "title": "NATS Message Rate (msg/sec)",
+        "targets": [
+          {
+            "expr": "rate(nats_server_total_msgs[1m])",
+            "legendFormat": "Messages/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "msgs",
+            "label": "Messages/sec"
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 48
+        },
+        "type": "table",
+        "title": "Recent Error Log (Last 50)",
+        "targets": [
+          {
+            "expr": "topk(50, minio_error_log_recent)",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {
+                "Time": 0,
+                "level": 1,
+                "component": 2,
+                "message": 3,
+                "instance": 4
+              },
+              "renameByName": {
+                "Time": "Timestamp",
+                "level": "Level",
+                "component": "Component",
+                "message": "Error Message",
+                "instance": "Instance"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 48
+        },
+        "type": "graph",
+        "title": "Service Availability (%)",
+        "targets": [
+          {
+            "expr": "100 * avg_over_time(up{job=\"minio\"}[5m])",
+            "legendFormat": "{{instance}} - Availability",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Availability",
+            "max": 100,
+            "min": 99
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [99.9],
+                "type": "lt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Service Availability Below SLA"
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus"
+        },
+        {
+          "name": "instance",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "label_values(up{job=\"minio\"}, instance)",
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "$datasource",
+          "enable": true,
+          "expr": "ALERTS{alertname=~\".*\"}",
+          "iconColor": "orange",
+          "name": "All Alerts",
+          "tagKeys": "alertname,severity",
+          "textFormat": "{{alertname}}: {{instance}}",
+          "titleFormat": "Alert"
+        },
+        {
+          "datasource": "$datasource",
+          "enable": true,
+          "expr": "changes(minio_process_start_time_seconds[5m]) > 0",
+          "iconColor": "blue",
+          "name": "Service Restarts",
+          "textFormat": "Service restarted",
+          "titleFormat": "Restart"
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

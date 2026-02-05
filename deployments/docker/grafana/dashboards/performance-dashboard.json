@@ -1,0 +1,503 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "minio-performance",
+    "title": "MinIO Enterprise - Performance Dashboard",
+    "tags": ["minio", "performance", "cache"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5s",
+    "time": {
+      "from": "now-15m",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "type": "graph",
+        "title": "Cache Write Throughput (ops/sec)",
+        "targets": [
+          {
+            "expr": "rate(minio_cache_writes_total[1m])",
+            "legendFormat": "{{instance}} - Write Ops/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Operations/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [400000],
+                "type": "lt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "Low Cache Write Throughput",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "type": "graph",
+        "title": "Cache Read Throughput (ops/sec)",
+        "targets": [
+          {
+            "expr": "rate(minio_cache_reads_total[1m])",
+            "legendFormat": "{{instance}} - Read Ops/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Operations/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1500000],
+                "type": "lt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Low Cache Read Throughput"
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "type": "graph",
+        "title": "Cache Hit Rate (%)",
+        "targets": [
+          {
+            "expr": "100 * rate(minio_cache_hits_total[1m]) / (rate(minio_cache_hits_total[1m]) + rate(minio_cache_misses_total[1m]))",
+            "legendFormat": "{{instance}} - Hit Rate %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Hit Rate",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [75],
+                "type": "lt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Low Cache Hit Rate"
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "type": "graph",
+        "title": "Cache Eviction Rate (ops/sec)",
+        "targets": [
+          {
+            "expr": "rate(minio_cache_evictions_total[1m])",
+            "legendFormat": "{{instance}} - Evictions/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Evictions/sec"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "type": "graph",
+        "title": "Replication Throughput (ops/sec)",
+        "targets": [
+          {
+            "expr": "rate(minio_replication_operations_total[1m])",
+            "legendFormat": "{{instance}} - Replication Ops/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ops",
+            "label": "Operations/sec"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [8000],
+                "type": "lt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "Low Replication Throughput"
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "type": "graph",
+        "title": "Replication Lag (ms)",
+        "targets": [
+          {
+            "expr": "minio_replication_lag_milliseconds",
+            "legendFormat": "{{instance}} - Replication Lag",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency (milliseconds)"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [100],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Replication Lag"
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "API Request Rate (req/sec)",
+        "targets": [
+          {
+            "expr": "rate(minio_api_requests_total[1m])",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "API Latency P50/P95/P99 (ms)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(minio_api_latency_bucket[1m]))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(minio_api_latency_bucket[1m]))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(minio_api_latency_bucket[1m]))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [50],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["C", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High API Latency (P99 > 50ms)"
+        }
+      },
+      {
+        "id": 9,
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 24
+        },
+        "type": "graph",
+        "title": "API Error Rate (%)",
+        "targets": [
+          {
+            "expr": "100 * rate(minio_api_errors_total[1m]) / rate(minio_api_requests_total[1m])",
+            "legendFormat": "Error Rate %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Error Rate",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [5],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High API Error Rate"
+        }
+      },
+      {
+        "id": 10,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "type": "graph",
+        "title": "Tenant Quota Usage (%)",
+        "targets": [
+          {
+            "expr": "100 * minio_tenant_quota_used_bytes / minio_tenant_quota_limit_bytes",
+            "legendFormat": "{{tenant}} - Quota Usage %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "Quota Usage",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [85],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Tenant Quota Usage"
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "type": "graph",
+        "title": "Tenant Request Rate (req/sec)",
+        "targets": [
+          {
+            "expr": "rate(minio_tenant_requests_total[1m])",
+            "legendFormat": "{{tenant}} - Requests/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus"
+        },
+        {
+          "name": "instance",
+          "type": "query",
+          "datasource": "$datasource",
+          "query": "label_values(minio_cache_writes_total, instance)",
+          "multi": true,
+          "includeAll": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "datasource": "$datasource",
+          "enable": true,
+          "expr": "ALERTS{alertname=~\".*MinIO.*\"}",
+          "iconColor": "red",
+          "name": "MinIO Alerts",
+          "tagKeys": "alertname,severity",
+          "textFormat": "{{alertname}}: {{instance}}",
+          "titleFormat": "Alert"
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}
