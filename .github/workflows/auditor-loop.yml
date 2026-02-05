@@ -1,0 +1,34 @@
+name: Code Auditor (Daily at 8 PM UTC)
+
+on:
+  schedule:
+    # Run every night at 8 PM UTC
+    - cron: '0 20 * * *'
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  code-auditor:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run Code Auditor
+        run: |
+          python scripts/agents/code_auditor.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

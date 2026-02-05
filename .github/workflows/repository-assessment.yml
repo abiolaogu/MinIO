@@ -1,0 +1,76 @@
+name: Repository Assessment & Improvement
+
+on:
+  # 1. The Autonomous Schedule (Every 6 Hours)
+  schedule:
+    # UTC Times: 00:00, 06:00, 12:00, 18:00
+    # Note: GitHub Actions runs in UTC.
+    - cron: '0 0,6,12,18 * * *'
+    
+  # 2. Manual Trigger
+  workflow_dispatch:
+  
+  # 3. On Code Change (Optional - keep if you want instant feedback)
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  assess-and-improve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Repository Assessment
+        id: assessment
+        run: |
+          python scripts/agents/repo_assessor.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        continue-on-error: true
+
+      - name: Run Repository Improvement
+        run: |
+          python scripts/agents/repo_improver.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Commit generated documentation
+        run: |
+          git config user.name "Factory Bot"
+          git config user.email "factory-bot@billyronks.com"
+          git add docs/
+          git diff --staged --quiet || git commit -m "docs: generate missing documentation (Factory Improvement System)"
+          git push
+        continue-on-error: true
+
+      - name: Send Slack Notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🏭 *Factory Update: Adtech Repository*\n*Status:* ${{ job.status }}\n*Details:* Assessment and Improvement run completed.\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow Logs>"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,231 @@
+name: Install Factory to Repo
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'The full name of the repo to transform (e.g., yomartee/vendorplatform)'
+        required: true
+        type: string
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Template
+        uses: actions/checkout@v4
+      
+      - name: Inject Factory into Target
+        run: |
+          echo "Injecting factory into ${{ github.event.inputs.target_repo }}"
+          # This is where your existing installation logic lives
+
+    steps:
+      - name: Checkout factory template
+        uses: actions/checkout@v4
+        with:
+          path: factory-template
+
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          token: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+          path: target-repo
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install PyYAML requests anthropic
+
+      - name: Install transformation kit
+        id: install
+        run: |
+          cd target-repo
+
+          # Create necessary directories
+          mkdir -p .github/workflows
+          mkdir -p scripts/universal
+          mkdir -p templates/config
+          mkdir -p docs
+
+          # Copy universal scripts
+          cp -r ../factory-template/scripts/universal/* scripts/universal/
+          chmod +x scripts/universal/*.py
+
+          # Copy workflow (check if exists first)
+          if [ -f .github/workflows/universal-ci.yml ]; then
+            echo "⚠️ universal-ci.yml already exists, creating as universal-ci-factory.yml"
+            cp ../factory-template/templates/workflows/universal-ci.yml .github/workflows/universal-ci-factory.yml
+            echo "workflow_name=universal-ci-factory.yml" >> $GITHUB_OUTPUT
+          else
+            cp ../factory-template/templates/workflows/universal-ci.yml .github/workflows/
+            echo "workflow_name=universal-ci.yml" >> $GITHUB_OUTPUT
+          fi
+
+          # Copy config template
+          cp ../factory-template/templates/config/universal-config-schema.yaml templates/config/
+
+          # Copy documentation
+          cp ../factory-template/docs/universal-transformation-kit.md docs/
+
+          echo "✅ Files copied successfully"
+
+      - name: Detect tech stack
+        id: detect
+        run: |
+          cd target-repo
+          python scripts/universal/detect_tech_stack.py --format json > tech_stack.json
+          cat tech_stack.json
+
+          # Extract key information
+          LANGUAGE=$(python -c "import json; print(json.load(open('tech_stack.json'))['tech_stack']['primary_language'])")
+          FRAMEWORK=$(python -c "import json; print(json.load(open('tech_stack.json'))['tech_stack'].get('framework', 'None'))")
+
+          echo "language=$LANGUAGE" >> $GITHUB_OUTPUT
+          echo "framework=$FRAMEWORK" >> $GITHUB_OUTPUT
+
+          # Save for PR body
+          echo "TECH_STACK<<EOF" >> $GITHUB_ENV
+          cat tech_stack.json | python -m json.tool
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create pull request
+        if: inputs.create_pr == true
+        run: |
+          cd target-repo
+
+          # Configure git
+          git config user.name "Factory Bot"
+          git config user.email "factory-bot@billyronks.com"
+
+          # Create branch
+          BRANCH="factory/install-transformation-kit-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+
+          # Add all changes
+          git add .
+
+          # Create commit
+          git commit -m "feat: install Factory Transformation Kit
+
+Installed universal CI/CD system from factory-template.
+
+## Components Installed
+
+- Universal scripts (scripts/universal/)
+- CI/CD workflow (.github/workflows/${{ steps.install.outputs.workflow_name }})
+- Configuration template (templates/config/universal-config-schema.yaml)
+- Documentation (docs/universal-transformation-kit.md)
+
+## Detected Tech Stack
+
+\`\`\`json
+${{ env.TECH_STACK }}
+\`\`\`
+
+## Next Steps
+
+1. Review the installed workflow
+2. Customize tier paths if needed
+3. Test the automation by opening a test PR
+
+---
+Generated with [Claude Code](https://claude.ai/code)"
+
+          # Push branch
+          git push origin "$BRANCH"
+
+          # Create PR using gh CLI
+          gh pr create \
+            --title "feat: Install Factory Transformation Kit" \
+            --body "## Summary
+
+This PR installs the **Factory Transformation Kit** into this repository, enabling:
+- ✅ Automatic tech stack detection
+- ✅ Universal build/test/lint scripts
+- ✅ Tier-based automation (Tier 0: auto-merge, Tier 1: review, Tier 2: admin approval)
+- ✅ Self-healing workflows
+
+## Components Installed
+
+- **Universal Scripts**: \`scripts/universal/\`
+  - \`detect_tech_stack.py\` - Auto-detects language/framework
+  - \`universal_test.py\` - Runs tests for any tech stack
+  - \`universal_build.py\` - Builds for any tech stack
+  - \`universal_lint.py\` - Lints for any tech stack
+
+- **CI/CD Workflow**: \`.github/workflows/${{ steps.install.outputs.workflow_name }}\`
+  - Tier-based automation system
+  - Auto-merge for Tier 0 (docs, tests)
+  - Review requests for Tier 1 (features)
+  - Admin approval for Tier 2 (auth, payments, infra)
+
+- **Configuration**: \`templates/config/universal-config-schema.yaml\`
+- **Documentation**: \`docs/universal-transformation-kit.md\`
+
+## Detected Tech Stack
+
+\`\`\`json
+${{ env.TECH_STACK }}
+\`\`\`
+
+## What Happens After Merge
+
+Once merged, the CI/CD workflow will automatically:
+1. Detect your tech stack on every PR
+2. Run appropriate lint/test/build commands
+3. Apply tier-based automation rules
+
+## Review Checklist
+
+- [ ] Review workflow file (\`.github/workflows/${{ steps.install.outputs.workflow_name }}\`)
+- [ ] Customize tier paths if needed (edit workflow file)
+- [ ] Verify tech stack detection is correct
+- [ ] Check for conflicts with existing workflows
+
+## Testing
+
+After merging, test by creating a PR that changes:
+- Documentation (should auto-merge after CI passes)
+- Source code (should request review)
+
+---
+Generated with [Claude Code](https://claude.ai/code)" \
+            --base main
+
+          PR_URL=$(gh pr view --json url -q .url)
+          echo "✅ Pull request created: $PR_URL"
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+
+      - name: Installation summary
+        run: |
+          echo "## Installation Complete! ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Target Repository" >> $GITHUB_STEP_SUMMARY
+          echo "${{ inputs.target_repo }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Detected Tech Stack" >> $GITHUB_STEP_SUMMARY
+          echo "- **Language**: ${{ steps.detect.outputs.language }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Framework**: ${{ steps.detect.outputs.framework }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Components Installed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Universal scripts" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ CI/CD workflow" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Configuration template" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Documentation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.create_pr }}" == "true" ]; then
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "1. Review and merge the pull request" >> $GITHUB_STEP_SUMMARY
+            echo "2. Test the automation by creating a test PR" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "1. Changes have been committed directly" >> $GITHUB_STEP_SUMMARY
+            echo "2. Test the automation by creating a PR" >> $GITHUB_STEP_SUMMARY
+          fi

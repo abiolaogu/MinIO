@@ -1,0 +1,137 @@
+{
+  "version": "3.0",
+  "name": "BillyRonks Unified Design System V3",
+  "description": "Professional design system for BillyRonks Global multi-platform applications",
+  "colors": {
+    "primary": {
+      "main": "#1a365d",
+      "name": "Deep Navy",
+      "usage": "Primary brand color, headers, CTAs",
+      "variants": {
+        "50": "#f0f4f8",
+        "100": "#d9e2ec",
+        "200": "#bcccdc",
+        "300": "#9fb3c8",
+        "400": "#829ab1",
+        "500": "#627d98",
+        "600": "#486581",
+        "700": "#334e68",
+        "800": "#243b53",
+        "900": "#1a365d"
+      }
+    },
+    "secondary": {
+      "main": "#dd6b20",
+      "name": "Orange",
+      "usage": "Accents, highlights, important actions",
+      "variants": {
+        "50": "#fffaf0",
+        "100": "#feebc8",
+        "200": "#fbd38d",
+        "300": "#f6ad55",
+        "400": "#ed8936",
+        "500": "#dd6b20",
+        "600": "#c05621",
+        "700": "#9c4221",
+        "800": "#7b341e",
+        "900": "#652b19"
+      }
+    },
+    "neutral": {
+      "50": "#fafafa",
+      "100": "#f5f5f5",
+      "200": "#e5e5e5",
+      "300": "#d4d4d4",
+      "400": "#a3a3a3",
+      "500": "#737373",
+      "600": "#525252",
+      "700": "#404040",
+      "800": "#262626",
+      "900": "#171717"
+    },
+    "semantic": {
+      "success": "#10b981",
+      "warning": "#f59e0b",
+      "error": "#ef4444",
+      "info": "#3b82f6"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "primary": "Inter, system-ui, -apple-system, sans-serif",
+      "mono": "JetBrains Mono, Consolas, monospace"
+    },
+    "scale": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem",
+      "3xl": "1.875rem",
+      "4xl": "2.25rem",
+      "5xl": "3rem"
+    },
+    "weight": {
+      "light": 300,
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700
+    }
+  },
+  "spacing": {
+    "unit": "0.25rem",
+    "scale": [0, 4, 8, 12, 16, 24, 32, 48, 64, 96, 128]
+  },
+  "borderRadius": {
+    "sm": "0.25rem",
+    "md": "0.375rem",
+    "lg": "0.5rem",
+    "xl": "0.75rem",
+    "2xl": "1rem",
+    "full": "9999px"
+  },
+  "shadows": {
+    "sm": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    "md": "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+    "lg": "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+    "xl": "0 20px 25px -5px rgb(0 0 0 / 0.1)"
+  },
+  "components": {
+    "button": {
+      "primary": {
+        "background": "#1a365d",
+        "color": "#ffffff",
+        "hover": "#243b53",
+        "active": "#334e68"
+      },
+      "secondary": {
+        "background": "#dd6b20",
+        "color": "#ffffff",
+        "hover": "#c05621",
+        "active": "#9c4221"
+      }
+    },
+    "input": {
+      "borderColor": "#d4d4d4",
+      "focusBorderColor": "#1a365d",
+      "background": "#ffffff",
+      "errorBorderColor": "#ef4444"
+    },
+    "card": {
+      "background": "#ffffff",
+      "borderColor": "#e5e5e5",
+      "shadow": "md"
+    }
+  },
+  "darkMode": {
+    "enabled": true,
+    "colors": {
+      "background": "#0f172a",
+      "surface": "#1e293b",
+      "text": "#f1f5f9",
+      "border": "#334155"
+    }
+  }
+}

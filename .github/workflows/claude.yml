@@ -1,0 +1,41 @@
+name: Universal Factory Worker
+on:
+  issues:
+    types: [opened, edited, assigned] # Added 'edited' just in case
+  issue_comment:
+    types: [created]
+
+jobs:
+  build:
+    # 1. UPDATED LOGIC: Checks for @claude anywhere in the body
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    
+    runs-on: ubuntu-latest
+    
+    # 2. PERMISSIONS: The "Keys" required to talk to GitHub securely
+    permissions:
+      contents: write       # To push code
+      pull-requests: write  # To open PRs
+      issues: write         # To reply to you
+      id-token: write       # <--- CRITICAL FIX: Allows OIDC authentication
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Activate Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: "claude-3-5-sonnet-20241022"
+
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🤖 *Claude is on the move!*\n*Task:* ${{ github.event.issue.title }}\n*Link:* ${{ github.event.issue.html_url }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

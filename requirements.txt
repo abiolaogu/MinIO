@@ -1,0 +1,12 @@
+# Market Research Scanner Dependencies
+requests>=2.31.0
+feedparser>=6.0.10
+anthropic>=0.39.0
+PyGithub>=2.1.1
+pyyaml>=6.0
+beautifulsoup4>=4.12.0
+
+# Autonomous Intelligence Hunter Libraries
+duckduckgo-search>=6.0.0
+pytrends>=4.9.0
+pandas>=2.0.0

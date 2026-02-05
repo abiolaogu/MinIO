@@ -1,0 +1,43 @@
+name: Inject Module
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: 'Source Repo (e.g., billyronks/auth-module)'
+        required: true
+      target_path:
+        description: 'Where to put it (e.g., src/auth)'
+        required: true
+
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Target
+        uses: actions/checkout@v4
+
+      - name: Checkout Source Module
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.source_repo }}
+          token: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+          path: injected_temp
+
+      - name: Transplant Code
+        run: |
+          mkdir -p ${{ inputs.target_path }}
+          cp -r injected_temp/* ${{ inputs.target_path }}/
+          rm -rf injected_temp
+
+      - name: Integrate Module
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            I have just copied code into ${{ inputs.target_path }}.
+
+            TASK: Integrate this new module into the main application.
+            1. Update 'package.json' if there are new dependencies.
+            2. Update 'tsconfig.json' if needed.
+            3. Create a Pull Request with the changes.

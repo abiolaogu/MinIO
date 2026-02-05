@@ -1,0 +1,170 @@
+name: Self-Healing (Tier 0/1 Auto-Fix)
+
+on:
+  workflow_run:
+    workflows: ["*"]  # Trigger on any workflow completion
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  diagnose:
+    name: Diagnose Failure
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+    outputs:
+      tier: ${{ steps.classify.outputs.tier }}
+      error_type: ${{ steps.analyze.outputs.error_type }}
+      should_fix: ${{ steps.classify.outputs.should_fix }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Download Failure Logs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }}
+            });
+
+            // Download logs for analysis
+            console.log('Workflow:', '${{ github.event.workflow_run.name }}');
+            console.log('Conclusion:', '${{ github.event.workflow_run.conclusion }}');
+
+      - name: Classify Failure Tier
+        id: classify
+        run: |
+          WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
+
+          # Tier 0: Documentation, Tests, Linting
+          if [[ "$WORKFLOW_NAME" =~ (test|lint|docs|format) ]]; then
+            echo "tier=0" >> $GITHUB_OUTPUT
+            echo "should_fix=true" >> $GITHUB_OUTPUT
+            echo "✅ Tier 0 failure detected - auto-fix enabled"
+
+          # Tier 1: Features, Logic (attempt fix, but be cautious)
+          elif [[ "$WORKFLOW_NAME" =~ (build|deploy-staging) ]]; then
+            echo "tier=1" >> $GITHUB_OUTPUT
+            echo "should_fix=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tier 1 failure detected - attempting careful fix"
+
+          # Tier 2: Production, Infrastructure (DO NOT AUTO-FIX)
+          elif [[ "$WORKFLOW_NAME" =~ (production|infra|auth|payment) ]]; then
+            echo "tier=2" >> $GITHUB_OUTPUT
+            echo "should_fix=false" >> $GITHUB_OUTPUT
+            echo "🚨 Tier 2 failure detected - escalating to human"
+
+          else
+            echo "tier=unknown" >> $GITHUB_OUTPUT
+            echo "should_fix=false" >> $GITHUB_OUTPUT
+            echo "❓ Unknown tier - defaulting to manual review"
+          fi
+
+      - name: Analyze Error Pattern
+        id: analyze
+        run: |
+          # Simulate log analysis (in production, fetch actual logs)
+          echo "Analyzing failure patterns..."
+          # For now, simulate detection
+          echo "error_type=linting" >> $GITHUB_OUTPUT
+
+  auto-fix:
+    name: Attempt Automatic Fix
+    runs-on: ubuntu-latest
+    needs: diagnose
+    if: needs.diagnose.outputs.should_fix == 'true'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attempt Fix with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            EMERGENCY AUTO-FIX REQUEST
+
+            A ${{ needs.diagnose.outputs.tier }} workflow has failed: "${{ github.event.workflow_run.name }}"
+
+            Detected error type: ${{ needs.diagnose.outputs.error_type }}
+
+            Your task:
+            1. Analyze the failure logs
+            2. Determine if this is a simple fix (linting, formatting, snapshot update)
+            3. If fixable, apply ONE fix commit
+            4. Use commit message format: "fix: auto-heal [error_type] in workflow"
+            5. CONSTRAINT: Do NOT loop - if fix fails, stop immediately
+
+      - name: Check if Fix Was Applied
+        id: check_fix
+        run: |
+          git fetch origin ${{ github.event.workflow_run.head_branch }}
+          LATEST_COMMIT=$(git log -1 --pretty=format:'%s')
+
+          if [[ "$LATEST_COMMIT" =~ "fix: auto-heal" ]]; then
+            echo "fix_applied=true" >> $GITHUB_OUTPUT
+            echo "✅ Fix was applied - will re-run workflow"
+          else
+            echo "fix_applied=false" >> $GITHUB_OUTPUT
+            echo "❌ No fix applied - may need human intervention"
+          fi
+
+      - name: Trigger Workflow Re-run
+        if: steps.check_fix.outputs.fix_applied == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.reRunWorkflow({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }}
+            });
+
+  escalate:
+    name: Escalate to Human
+    runs-on: ubuntu-latest
+    needs: [diagnose, auto-fix]
+    if: |
+      always() &&
+      (needs.diagnose.outputs.should_fix == 'false' ||
+       needs.auto-fix.result == 'failure')
+
+    steps:
+      - name: Create Incident Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tier = '${{ needs.diagnose.outputs.tier }}';
+            const workflow = '${{ github.event.workflow_run.name }}';
+            const runUrl = '${{ github.event.workflow_run.html_url }}';
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 ${tier === '2' ? 'TIER 2' : 'AUTO-FIX FAILED'}: ${workflow} requires attention`,
+              body: `## Self-Healing Escalation
+            **Workflow:** ${workflow}
+            **Tier:** ${tier}
+            **Run:** ${runUrl}
+            
+            ### Action Required
+            Review failure logs and apply manual fix.
+            `,
+              labels: ['incident', 'tier-' + tier, 'auto-escalated']
+            });

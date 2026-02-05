@@ -1,0 +1,162 @@
+# Ideal Customer Profile (ICP) Configuration
+# This file defines the target customer profiles for autonomous product creation
+# Used by: trend_hunter.py, autonomous_growth.py, sales-activation workflows
+
+icp:
+  # B2B SaaS Target Profile
+  b2b_saas:
+    company_size: "50-500"
+    industries:
+      - "technology"
+      - "financial services"
+      - "healthcare"
+      - "e-commerce"
+      - "professional services"
+    funding_stage:
+      - "series_a"
+      - "series_b"
+      - "series_c"
+      - "growth_stage"
+    technologies:
+      - "kubernetes"
+      - "aws"
+      - "gcp"
+      - "azure"
+      - "docker"
+      - "react"
+      - "node.js"
+      - "python"
+    titles:
+      - "CTO"
+      - "VP Engineering"
+      - "Head of Platform"
+      - "Engineering Manager"
+      - "DevOps Lead"
+      - "Technical Architect"
+    pain_points:
+      - "scalability challenges"
+      - "technical debt"
+      - "slow deployment cycles"
+      - "developer productivity"
+      - "infrastructure costs"
+    signals:
+      - "recent_funding"
+      - "hiring_engineering"
+      - "technology_adoption"
+      - "digital_transformation"
+      - "cloud_migration"
+
+  # SMB/Mid-Market Profile
+  smb_market:
+    company_size: "10-50"
+    industries:
+      - "retail"
+      - "hospitality"
+      - "education"
+      - "real estate"
+      - "marketing agencies"
+    budget_range: "$10k-$50k annually"
+    decision_makers:
+      - "CEO"
+      - "Founder"
+      - "Operations Manager"
+      - "Business Owner"
+    pain_points:
+      - "manual processes"
+      - "lack of automation"
+      - "data silos"
+      - "customer management"
+      - "reporting visibility"
+    priorities:
+      - "ease of use"
+      - "quick implementation"
+      - "cost effectiveness"
+      - "customer support"
+      - "integration with existing tools"
+
+  # Developer Tools Profile
+  developer_tools:
+    target_users:
+      - "individual developers"
+      - "development teams"
+      - "open source maintainers"
+    tech_stack:
+      - "javascript/typescript"
+      - "python"
+      - "go"
+      - "rust"
+      - "java"
+    use_cases:
+      - "developer productivity"
+      - "code quality"
+      - "testing automation"
+      - "deployment automation"
+      - "monitoring and observability"
+    distribution_channels:
+      - "github marketplace"
+      - "npm registry"
+      - "vs code extensions"
+      - "cli tools"
+      - "docker hub"
+    pricing_model:
+      - "freemium"
+      - "open source with paid features"
+      - "usage-based"
+
+# Market Signals to Monitor
+market_signals:
+  positive:
+    - "rapid user growth"
+    - "viral adoption"
+    - "strong community engagement"
+    - "competitor funding announcements"
+    - "regulatory changes creating demand"
+    - "emerging technology trends"
+
+  negative:
+    - "market saturation"
+    - "declining interest"
+    - "strong incumbent dominance"
+    - "regulatory restrictions"
+    - "high customer acquisition cost"
+
+# Product-Market Fit Indicators
+pmf_indicators:
+  early_stage:
+    - "10+ users within first week"
+    - "organic word-of-mouth growth"
+    - "feature requests from users"
+    - "high engagement rate (>40%)"
+
+  growth_stage:
+    - "100+ active users"
+    - "positive revenue trajectory"
+    - "low churn rate (<5%)"
+    - "strong NPS score (>50)"
+
+# Geographic Focus
+geographic_focus:
+  primary_markets:
+    - "North America"
+    - "Western Europe"
+    - "UK"
+
+  secondary_markets:
+    - "Australia"
+    - "Singapore"
+    - "Israel"
+    - "Brazil"
+
+# Exclusion Criteria (Markets/Segments to Avoid)
+exclusions:
+  industries:
+    - "gambling"
+    - "adult content"
+    - "cryptocurrency trading"
+    - "weapons/defense"
+
+  characteristics:
+    - "highly regulated markets requiring certifications"
+    - "long sales cycles (>12 months)"
+    - "requires physical infrastructure"
+    - "deep domain expertise required"

@@ -1,0 +1,199 @@
+name: Frontend Lifecycle - The Singularity
+
+# This unified workflow manages the entire lifecycle of frontend repositories
+# Mode 1: INIT - Scaffold new frontend repos when products are created
+# Mode 2: SYNC - Update existing frontends when backend changes
+
+on:
+  # Trigger 1: New Product Created
+  repository_dispatch:
+    types: [new_product_created]
+  workflow_call:
+    inputs:
+      product_name:
+        description: 'Name of the product to scaffold'
+        required: true
+        type: string
+      mode:
+        description: 'Operation mode: init or sync'
+        required: false
+        type: string
+        default: 'init'
+
+  # Trigger 2: Backend Updated (Hasura schema changes)
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/hasura/**'
+      - 'backend/domain_model.json'
+
+env:
+  HASURA_ENDPOINT: ${{ secrets.HASURA_ENDPOINT }}
+  HASURA_ADMIN_SECRET: ${{ secrets.HASURA_ADMIN_SECRET }}
+  WORKIK_API_KEY: ${{ secrets.WORKIK_API_KEY }}
+  FACTORY_ADMIN_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # <--- ADDED HERE
+
+jobs:
+  # Job 1: Determine Operation Mode
+  determine-mode:
+    name: Determine Operation Mode
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.detect.outputs.mode }}
+      product_name: ${{ steps.detect.outputs.product_name }}
+      should_run: ${{ steps.detect.outputs.should_run }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect mode and product
+        id: detect
+        run: |
+          echo "Determining operation mode..."
+
+          # Check if triggered by workflow_call or repository_dispatch
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "mode=${{ inputs.mode }}" >> $GITHUB_OUTPUT
+            echo "product_name=${{ inputs.product_name }}" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "✅ Mode: ${{ inputs.mode }} | Product: ${{ inputs.product_name }}"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "mode=init" >> $GITHUB_OUTPUT
+            echo "product_name=${{ github.event.client_payload.product_name }}" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "✅ Mode: init (New Product) | Product: ${{ github.event.client_payload.product_name }}"
+            exit 0
+          fi
+
+          # Check if triggered by push to backend
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BACKEND_CHANGES=$(git diff --name-only HEAD~1 HEAD | grep -E 'backend/hasura/|backend/domain_model.json' || echo "")
+
+            if [ -z "$BACKEND_CHANGES" ]; then
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              echo "⏭️ No backend changes detected, skipping"
+              exit 0
+            fi
+
+            PRODUCT_NAME=$(basename $GITHUB_REPOSITORY | sed 's/-backend$//' | sed 's/-template$//')
+
+            echo "mode=sync" >> $GITHUB_OUTPUT
+            echo "product_name=$PRODUCT_NAME" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "✅ Mode: sync (Backend Updated) | Product: $PRODUCT_NAME"
+            exit 0
+          fi
+
+          echo "should_run=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Unrecognized trigger, skipping"
+
+  # Job 2: Execute Frontend Engine
+  execute-engine:
+    name: Execute Frontend Engine
+    runs-on: ubuntu-latest
+    needs: determine-mode
+    if: needs.determine-mode.outputs.should_run == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install requests anthropic
+
+      - name: Run Frontend Engine
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # Explicitly passed to script env
+        run: |
+          python scripts/agents/frontend_engine.py \
+            --mode "${{ needs.determine-mode.outputs.mode }}" \
+            --product "${{ needs.determine-mode.outputs.product_name }}"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      # For Sync Mode: Create a PR back to THIS repo with the updates
+      - name: Create Pull Request (Sync Mode)
+        if: steps.changes.outputs.has_changes == 'true' && needs.determine-mode.outputs.mode == 'sync'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "🔮 Frontend Sync: ${{ needs.determine-mode.outputs.product_name }}"
+          branch: "frontend-sync/${{ needs.determine-mode.outputs.product_name }}"
+          body: "Auto-generated frontend updates based on backend schema changes."
+          labels: frontend,auto-generated,tier-1
+
+      # For Init Mode: We don't commit to this repo, we prepare for the push to the NEW repo below
+      - name: Archive Frontend Artifacts (Init Mode)
+        if: needs.determine-mode.outputs.mode == 'init'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-code
+          path: frontend/web/
+
+  # Job 3: Create Downstream Repository (INIT only)
+  create-frontend-repo:
+    name: Create Frontend Repository
+    runs-on: ubuntu-latest
+    needs: [determine-mode, execute-engine]
+    if: needs.determine-mode.outputs.mode == 'init'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-code
+          path: temp_frontend
+
+      - name: Create and push to new repository
+        run: |
+          PRODUCT="${{ needs.determine-mode.outputs.product_name }}"
+          # Clean product name to be repo-friendly
+          CLEAN_PRODUCT=$(echo "$PRODUCT" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+          ORG="billyronks"
+          REPO_NAME="${CLEAN_PRODUCT}-web"
+
+          echo "🚀 Creating repository: $ORG/$REPO_NAME"
+
+          # Create repository via API
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.FACTORY_ADMIN_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/orgs/${ORG}/repos \
+            -d '{"name":"'${REPO_NAME}'","description":"Auto-generated frontend for '${PRODUCT}'","private":true,"auto_init":true}'
+
+          # Add delay for Github to propagate
+          sleep 5
+
+          # Clone the new repo
+          git clone "https://${{ secrets.FACTORY_ADMIN_TOKEN }}@github.com/${ORG}/${REPO_NAME}.git" new_repo
+          
+          # Copy generated code into it
+          cp -r temp_frontend/* new_repo/
+          
+          # Push
+          cd new_repo
+          git config user.name "BillyRonks Factory Bot"
+          git config user.email "factory@billyronks.com"
+          git add .
+          git commit -m "feat: initial frontend scaffold via Singularity Engine"
+          git push origin main

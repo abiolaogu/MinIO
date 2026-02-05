@@ -1,0 +1,31 @@
+name: Factory Heartbeat
+
+on:
+  schedule:
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read      # <--- CRITICAL: Allows checkout to read the repo
+  issues: write       # Allows writing to issues
+
+jobs:
+  heartbeat:
+    name: Autonomous Factory Cycle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create autonomous cycle issue
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          # We explicitly tell it which repo to target to avoid confusion
+          gh issue create \
+            --repo ${{ github.repository }} \
+            --title "Autonomous Factory Cycle: $TIMESTAMP" \
+            --body "@claude go through the readme file, create a PRD if none exists, read through the PRD, execute the next recommend task and update the PRD"

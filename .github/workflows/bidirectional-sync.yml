@@ -1,0 +1,116 @@
+name: Bidirectional Sync
+
+on:
+  schedule:
+    # Run every night at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'Target Repository (e.g., billyronks/child-repo)'
+        required: true
+      sync_path:
+        description: 'Path mapping (e.g., packages/core:src/core)'
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: source
+
+      - name: Checkout Target
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          token: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+          path: target
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        # Tries to install from requirements.txt, falls back to minimal needs if missing
+        run: pip install -r source/requirements.txt || pip install pyyaml
+
+      - name: Read Manifest and Detect Conflicts
+        id: detect
+        working-directory: source
+        run: |
+          # Read manifest to find derived products with upstream tracking
+          if [ -f ".repo-index/manifest.yaml" ]; then
+            echo "📋 Reading repository manifest..."
+            cat .repo-index/manifest.yaml
+            
+            # For manual trigger: detect conflicts
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "🔍 Running conflict detection..."
+              
+              # Parse sync path logic handled by script, but we prepare context
+              # Assuming script handles full path logic or is adjusted below
+              
+              # Note: We need to split the sync_path input (e.g., "packages/core:src/core")
+              # into source and target args for the script
+              SYNC_MAP="${{ inputs.sync_path }}"
+              SRC_PART=$(echo $SYNC_MAP | cut -d: -f1)
+              TGT_PART=$(echo $SYNC_MAP | cut -d: -f2)
+
+              python scripts/transform/detect_conflicts.py \
+                --source "source/$SRC_PART" \
+                --target "target/$TGT_PART" \
+                --output conflicts.json \
+                --json-only
+              
+              # Read conflict status
+              if [ -f "conflicts.json" ]; then
+                CONFLICT_STATUS=$(jq -r '.status' conflicts.json)
+                echo "conflict_status=$CONFLICT_STATUS" >> $GITHUB_OUTPUT
+                
+                # Output summary
+                echo "📊 Conflict Summary:"
+                jq '.summary' conflicts.json || cat conflicts.json
+              else
+                echo "⚠️ Conflict report generation failed or script missing."
+                echo "conflict_status=unknown" >> $GITHUB_OUTPUT
+              fi
+            fi
+          else
+            echo "⚠️ No manifest found. Skipping upstream checks."
+            echo "conflict_status=unknown" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Perform Intelligent Sync
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            TASK: Sync code from Source to Target based on this mapping: ${{ inputs.sync_path }}
+            SOURCE PATH: source/${{ inputs.sync_path }} (Left side of mapping)
+            TARGET PATH: target/${{ inputs.sync_path }} (Right side of mapping)
+            
+            CONFLICT DETECTION: ${{ steps.detect.outputs.conflict_status }}
+            CONFLICT REPORT: See conflicts.json in source directory
+            
+            INSTRUCTIONS:
+            1. Read the conflicts.json file to understand what has changed.
+            2. For new files: Copy them from source to target.
+            3. For modified files: Perform intelligent merge or prompt for manual review.
+            4. For deleted files: Remove them from target (or archive if needed).
+            5. Generate a bash script to perform the sync operations.
+            6. IMPORTANT: Preserve target-specific configurations.
+
+      - name: Push Changes
+        working-directory: target
+        run: |
+          git config user.name "Factory Sync Bot"
+          git config user.email "bot@billyronks.com"
+          git add .
+          git commit -m "sync: Update from parent repository" || echo "No changes to sync"
+          git push origin main

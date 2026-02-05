@@ -1,0 +1,25 @@
+name: Marketing Agent
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-marketing-content:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate marketing materials
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Analyze the Release Notes from the event. Draft a professional LinkedIn post and a Twitter thread announcing this release for 'BillyRonks Global'. Save the drafts to `docs/marketing/campaign_${{ github.event.release.tag_name }}.md`.
