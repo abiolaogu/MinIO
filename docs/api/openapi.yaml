@@ -1,0 +1,568 @@
+openapi: 3.0.3
+info:
+  title: MinIO Enterprise API
+  description: |
+    Ultra-high-performance object storage API with 10-100x performance improvements.
+
+    ## Features
+    - 256-way sharded cache (500K writes/sec, 2M reads/sec)
+    - HTTP/2 connection pooling for replication
+    - Dynamic worker pools (4-128 workers auto-scaling)
+    - Lock-free operations with atomic operations
+    - Multi-tenant isolation with quota management
+    - Full observability (Prometheus metrics, Jaeger tracing)
+
+    ## Authentication
+    All API requests (except health checks) require a tenant ID via the `X-Tenant-ID` header.
+
+    ## Rate Limiting
+    - Upload: Limited by tenant quota
+    - Download: Limited by tenant bandwidth quota
+    - Metrics: No rate limiting
+
+  version: 3.0.0
+  contact:
+    name: MinIO Enterprise Support
+    url: https://github.com/abiolaogu/MinIO
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:9000
+    description: Local development server
+  - url: http://localhost:9001
+    description: Local metrics server
+  - url: https://api.minio-enterprise.example.com
+    description: Production server (example)
+
+tags:
+  - name: Object Storage
+    description: Object upload and download operations
+  - name: Health
+    description: Health check and readiness endpoints
+  - name: Metrics
+    description: Prometheus metrics and performance statistics
+  - name: Server Info
+    description: Server version and status information
+
+paths:
+  /:
+    get:
+      tags:
+        - Server Info
+      summary: Get server information
+      description: Returns server version, status, and performance information
+      operationId: getServerInfo
+      responses:
+        '200':
+          description: Server information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerInfo'
+              example:
+                status: "ok"
+                version: "3.0.0-extreme"
+                performance: "100x"
+
+  /upload:
+    post:
+      tags:
+        - Object Storage
+      summary: Upload an object
+      description: |
+        Upload an object to MinIO storage. The object will be:
+        - Stored in the 256-way sharded cache
+        - Quota checked against tenant limits
+        - Asynchronously replicated to configured regions
+
+        Performance: Up to 500K writes/sec
+      operationId: uploadObject
+      parameters:
+        - name: key
+          in: query
+          description: Unique object key identifier
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          example: "my-file.txt"
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for multi-tenancy and quota management
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        description: Object data to upload
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Object uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+              example:
+                status: "uploaded"
+                key: "my-file.txt"
+                size: 1048576
+        '400':
+          description: Bad request - missing tenant ID or key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Missing tenant ID or key"
+        '403':
+          description: Forbidden - quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Quota exceeded"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Failed to store object"
+
+    put:
+      tags:
+        - Object Storage
+      summary: Upload an object (PUT method)
+      description: Alternative PUT method for uploading objects (identical to POST)
+      operationId: uploadObjectPut
+      parameters:
+        - name: key
+          in: query
+          description: Unique object key identifier
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          example: "my-file.txt"
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for multi-tenancy and quota management
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        description: Object data to upload
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Object uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/QuotaExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /download:
+    get:
+      tags:
+        - Object Storage
+      summary: Download an object
+      description: |
+        Download an object from MinIO storage. The object will be retrieved from:
+        - L1 cache (in-memory, <1ms latency)
+        - L2 cache (NVMe, <5ms latency) if not in L1
+        - L3 cache (persistent storage, <50ms latency) if not in L2
+
+        Performance: Up to 2M reads/sec with 95%+ cache hit ratio
+      operationId: downloadObject
+      parameters:
+        - name: key
+          in: query
+          description: Unique object key identifier
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          example: "my-file.txt"
+        - name: X-Tenant-ID
+          in: header
+          description: Tenant identifier for multi-tenancy and quota management
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Object retrieved successfully
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                default: application/octet-stream
+              description: Content type of the object
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Object not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Object not found"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /minio/health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: |
+        Kubernetes liveness probe endpoint. Returns 200 if the server process is running.
+        Used to determine if the container should be restarted.
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Server is alive
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+
+  /minio/health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: |
+        Kubernetes readiness probe endpoint. Returns 200 if the server is ready to accept traffic.
+        Used to determine if traffic should be routed to this instance.
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Server is ready to accept traffic
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "READY"
+
+  /metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Get Prometheus metrics
+      description: |
+        Returns Prometheus-formatted metrics for monitoring and observability.
+
+        ## Metric Categories
+        - **Cache Metrics**: Hits, misses, throughput, latency, hit rate
+        - **Replication Metrics**: Objects replicated, throughput (ops/sec, MB/s), active workers
+        - **Tenant Metrics**: Total tenants, operations, cache hits
+        - **Performance Summary**: Aggregated performance statistics
+
+        ## Performance Targets
+        - Cache Write: 500K ops/sec
+        - Cache Read: 2M ops/sec
+        - Replication: 10K ops/sec
+        - P99 Latency: <50ms
+        - Cache Hit Rate: >95%
+      operationId: getMetrics
+      servers:
+        - url: http://localhost:9001
+          description: Metrics server
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Prometheus-formatted metrics
+              example: |
+                # HELP minio_version Server version
+                # TYPE minio_version gauge
+                minio_version{version="3.0.0-extreme"} 1
+
+                # HELP cache_hits_total Total cache hits
+                # TYPE cache_hits_total counter
+                cache_hits_total 1234567
+
+                # HELP cache_misses_total Total cache misses
+                # TYPE cache_misses_total counter
+                cache_misses_total 12345
+
+                # HELP cache_throughput_ops Operations per second
+                # TYPE cache_throughput_ops gauge
+                cache_throughput_ops 500000
+
+                # HELP cache_latency_ns Average latency in nanoseconds
+                # TYPE cache_latency_ns gauge
+                cache_latency_ns 1500
+
+                # HELP replication_objects_total Total replicated objects
+                # TYPE replication_objects_total counter
+                replication_objects_total 98765
+
+                # HELP replication_throughput_ops Operations per second
+                # TYPE replication_throughput_ops gauge
+                replication_throughput_ops 10000
+
+                # HELP replication_throughput_mbps Throughput in MB/s
+                # TYPE replication_throughput_mbps gauge
+                replication_throughput_mbps 1250
+
+                # HELP tenant_total_tenants Total number of tenants
+                # TYPE tenant_total_tenants gauge
+                tenant_total_tenants 42
+
+                # HELP tenant_throughput_ops Tenant operations per second
+                # TYPE tenant_throughput_ops gauge
+                tenant_throughput_ops 250000
+
+                # HELP tenant_cache_hits Total tenant cache hits
+                # TYPE tenant_cache_hits counter
+                tenant_cache_hits 987654
+
+                # Performance Summary (V3 Extreme)
+                # Cache Hit Rate: 99.01%
+                # Avg Latency: 1500 ns (1.50 μs)
+                # Active Workers: 512
+                # Allocated Memory: 25600 MB
+
+components:
+  schemas:
+    ServerInfo:
+      type: object
+      description: Server status and version information
+      properties:
+        status:
+          type: string
+          description: Server operational status
+          enum: [ok, degraded, error]
+          example: "ok"
+        version:
+          type: string
+          description: Server version
+          example: "3.0.0-extreme"
+        performance:
+          type: string
+          description: Performance improvement factor
+          example: "100x"
+      required:
+        - status
+        - version
+        - performance
+
+    UploadResponse:
+      type: object
+      description: Successful upload response
+      properties:
+        status:
+          type: string
+          description: Upload status
+          enum: [uploaded]
+          example: "uploaded"
+        key:
+          type: string
+          description: Object key that was uploaded
+          example: "my-file.txt"
+        size:
+          type: integer
+          format: int64
+          description: Size of uploaded object in bytes
+          minimum: 0
+          example: 1048576
+      required:
+        - status
+        - key
+        - size
+
+    Error:
+      type: object
+      description: Error response
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Missing tenant ID or key"
+      required:
+        - error
+
+    CacheStats:
+      type: object
+      description: Cache performance statistics
+      properties:
+        total_hits:
+          type: integer
+          format: int64
+          description: Total cache hits since server start
+        total_misses:
+          type: integer
+          format: int64
+          description: Total cache misses since server start
+        throughput_ops:
+          type: integer
+          format: int64
+          description: Current throughput in operations per second
+        avg_latency_ns:
+          type: integer
+          format: int64
+          description: Average operation latency in nanoseconds
+        allocated_bytes:
+          type: integer
+          format: int64
+          description: Total allocated memory in bytes
+        hit_rate_percent:
+          type: number
+          format: float
+          description: Cache hit rate percentage
+          minimum: 0
+          maximum: 100
+
+    ReplicationStats:
+      type: object
+      description: Replication engine statistics
+      properties:
+        replicated_objects:
+          type: integer
+          format: int64
+          description: Total objects replicated since server start
+        throughput_ops:
+          type: integer
+          format: int64
+          description: Current replication throughput in operations per second
+        throughput_mbps:
+          type: integer
+          format: int64
+          description: Current replication throughput in MB/s
+        active_workers:
+          type: integer
+          description: Number of active replication workers
+
+    TenantStats:
+      type: object
+      description: Tenant management statistics
+      properties:
+        total_tenants:
+          type: integer
+          format: int64
+          description: Total number of active tenants
+        throughput_ops:
+          type: integer
+          format: int64
+          description: Tenant operations per second
+        cache_hits:
+          type: integer
+          format: int64
+          description: Total tenant cache hits
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid or missing parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Missing tenant ID or key"
+
+    QuotaExceeded:
+      description: Forbidden - tenant quota exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Quota exceeded"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Failed to process request"
+
+  parameters:
+    TenantID:
+      name: X-Tenant-ID
+      in: header
+      description: Tenant identifier for multi-tenancy and quota management
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ObjectKey:
+      name: key
+      in: query
+      description: Unique object key identifier
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
+      example: "my-file.txt"
+
+  securitySchemes:
+    TenantHeader:
+      type: apiKey
+      in: header
+      name: X-Tenant-ID
+      description: |
+        Tenant ID for multi-tenant isolation and quota management.
+        Each tenant has separate quotas for:
+        - Storage size
+        - Number of objects
+        - Bandwidth usage
+
+security:
+  - TenantHeader: []
+
+externalDocs:
+  description: MinIO Enterprise Documentation
+  url: https://github.com/abiolaogu/MinIO/blob/main/README.md
