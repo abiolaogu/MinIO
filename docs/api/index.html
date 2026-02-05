@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinIO Enterprise API Documentation</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
+    <link rel="icon" type="image/png" href="https://min.io/resources/favicons/favicon-32x32.png" sizes="32x32">
+    <style>
+        html {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+        }
+
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .topbar {
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+        }
+
+        .topbar-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar-wrapper .link {
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .topbar-wrapper .link:hover {
+            text-decoration: underline;
+        }
+
+        .info {
+            margin: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-left: 4px solid #0088cc;
+        }
+
+        .info h2 {
+            margin-top: 0;
+        }
+
+        .info .badges {
+            margin: 15px 0;
+        }
+
+        .info .badges img {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="topbar-wrapper">
+            <a class="link" href="/">MinIO Enterprise API Documentation</a>
+            <a class="link" href="https://github.com/abiolaogu/MinIO" target="_blank">GitHub</a>
+        </div>
+    </div>
+
+    <div class="info">
+        <h2>🚀 MinIO Enterprise - Ultra-High-Performance Object Storage API</h2>
+        <div class="badges">
+            <img src="https://img.shields.io/badge/version-3.0.0-blue" alt="Version">
+            <img src="https://img.shields.io/badge/OpenAPI-3.0.3-green" alt="OpenAPI">
+            <img src="https://img.shields.io/badge/performance-100x-orange" alt="Performance">
+        </div>
+        <p>
+            <strong>Performance Highlights:</strong>
+        </p>
+        <ul>
+            <li>Cache Writes: <strong>500K/sec</strong> (100x improvement)</li>
+            <li>Cache Reads: <strong>2M/sec</strong> (100x improvement)</li>
+            <li>Replication: <strong>10K/sec</strong> (100x improvement)</li>
+            <li>P99 Latency: <strong>&lt;50ms</strong></li>
+        </ul>
+        <p>
+            <strong>Quick Links:</strong>
+            <a href="https://github.com/abiolaogu/MinIO" target="_blank">GitHub Repository</a> |
+            <a href="../../README.md">README</a> |
+            <a href="../guides/PERFORMANCE.md">Performance Guide</a> |
+            <a href="../guides/DEPLOYMENT.md">Deployment Guide</a>
+        </p>
+    </div>
+
+    <div id="swagger-ui"></div>
+
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js" crossorigin></script>
+    <script>
+        window.onload = function() {
+            // Begin Swagger UI call region
+            const ui = SwaggerUIBundle({
+                url: "openapi.yaml",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout",
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                docExpansion: "list",
+                filter: true,
+                showExtensions: true,
+                showCommonExtensions: true,
+                syntaxHighlight: {
+                    activate: true,
+                    theme: "monokai"
+                },
+                tryItOutEnabled: true
+            });
+            // End Swagger UI call region
+
+            window.ui = ui;
+        };
+    </script>
+</body>
+</html>

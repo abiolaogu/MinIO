@@ -383,6 +383,41 @@ services:
           cpus: '1'
           memory: 1G
 
+  # ============================================================
+  # API Documentation - Interactive Swagger UI
+  # ============================================================
+  api-docs:
+    build:
+      context: ../../
+      dockerfile: deployments/docker/api-docs.Dockerfile
+    image: minio-api-docs:latest
+    container_name: minio-api-docs
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=50m
+      - /var/run:rw,noexec,nosuid,size=10m
+
 # ============================================================
 # Networks
 # ============================================================

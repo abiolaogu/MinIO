@@ -1,0 +1,28 @@
+version: '3.9'
+
+# Standalone API Documentation Server
+# Usage: docker-compose -f docker-compose.api-docs.yml up
+# Access: http://localhost:8080
+
+services:
+  api-docs:
+    build:
+      context: ../../
+      dockerfile: deployments/docker/api-docs.Dockerfile
+    image: minio-api-docs:latest
+    container_name: minio-api-docs
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=50m
+      - /var/run:rw,noexec,nosuid,size=10m

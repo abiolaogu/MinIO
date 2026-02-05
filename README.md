@@ -86,6 +86,7 @@ MinIO/
 
 ## 📖 Documentation
 
+- [API Documentation](docs/api/README.md) - Interactive Swagger UI documentation
 - [Performance Guide](docs/guides/PERFORMANCE.md) - Optimization techniques & architecture
 - [Deployment Guide](docs/guides/DEPLOYMENT.md) - Production deployment instructions
 - [Test Report](docs/TEST_REPORT.md) - Comprehensive test results

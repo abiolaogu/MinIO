@@ -13,6 +13,8 @@ MinIO Enterprise provides a high-performance object storage API with:
 ## Files
 
 - `openapi.yaml` - OpenAPI 3.0 specification (complete API documentation)
+- `index.html` - Interactive Swagger UI interface
+- `README.md` - This documentation file
 
 ## API Endpoints
 
@@ -31,31 +33,45 @@ MinIO Enterprise provides a high-performance object storage API with:
 
 ## Viewing the Documentation
 
-### Option 1: Swagger UI (Online)
+### Option 1: Built-in Swagger UI (Recommended) ⭐
+Use the integrated Swagger UI that comes with MinIO Enterprise:
+
+```bash
+# Using Docker Compose (standalone)
+cd deployments/docker
+docker-compose -f docker-compose.api-docs.yml up
+
+# Or as part of the full production stack
+docker-compose -f docker-compose.production.yml up api-docs
+```
+Then open: **http://localhost:8080**
+
+### Option 2: Go Development Server
+Run the lightweight Go server for local development:
+
+```bash
+# From the repository root
+go run cmd/api-docs-server/main.go
+
+# Or with custom port
+go run cmd/api-docs-server/main.go -port 3000
+```
+Then open: **http://localhost:8080/index.html**
+
+### Option 3: Python HTTP Server (Quick & Easy)
+```bash
+# From the docs/api directory
+python3 -m http.server 8080
+```
+Then open: **http://localhost:8080**
+
+### Option 4: Swagger Editor (Online)
 1. Go to [Swagger Editor](https://editor.swagger.io/)
 2. Copy the contents of `openapi.yaml`
 3. Paste into the editor
 4. View the interactive documentation
 
-### Option 2: Swagger UI (Local with Docker)
-```bash
-docker run -p 8080:8080 \
-  -e SWAGGER_JSON=/api/openapi.yaml \
-  -v $(pwd)/docs/api:/api \
-  swaggerapi/swagger-ui
-```
-Then open: http://localhost:8080
-
-### Option 3: Redoc (Local with Docker)
-```bash
-docker run -p 8080:80 \
-  -e SPEC_URL=/api/openapi.yaml \
-  -v $(pwd)/docs/api:/api \
-  redocly/redoc
-```
-Then open: http://localhost:8080
-
-### Option 4: VS Code Extension
+### Option 5: VS Code Extension
 1. Install "OpenAPI (Swagger) Editor" extension
 2. Open `openapi.yaml` in VS Code
 3. Right-click → "Preview Swagger"
@@ -165,9 +181,41 @@ Health check and metrics endpoints do not require authentication.
 | Replication | 10K ops/sec | <50ms P99 |
 | Cache Hit Rate | 95%+ | - |
 
+## Production Deployment
+
+The API documentation is included in the production stack and can be deployed alongside MinIO:
+
+```bash
+# Deploy full stack (MinIO + monitoring + API docs)
+cd deployments/docker
+docker-compose -f docker-compose.production.yml up -d
+
+# API documentation available at http://localhost:8080
+# MinIO API at http://localhost:9000
+# MinIO Console at http://localhost:9001
+```
+
+### Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-api-docs
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: api-docs
+        image: minio-api-docs:latest
+        ports:
+        - containerPort: 80
+```
+
 ## Next Steps
 
-1. **Swagger UI Integration**: Deploy Swagger UI for interactive documentation
+1. ✅ **Swagger UI Integration**: Deployed and integrated (COMPLETED)
 2. **SDK Generation**: Generate official client libraries (Go, Python, JavaScript)
 3. **API Testing**: Add automated API tests using the specification
 4. **Versioning**: Implement API versioning strategy (/api/v1, /api/v2)

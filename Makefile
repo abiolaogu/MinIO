@@ -1,7 +1,7 @@
 # Makefile for MinIO Enterprise
 # Best practices compliant build system
 
-.PHONY: help build test test-race bench security-scan validate clean deploy docker-build fmt lint coverage install run all
+.PHONY: help build test test-race bench security-scan validate clean deploy docker-build fmt lint coverage install run all api-docs api-docs-build api-docs-stop
 
 # Variables
 BINARY_NAME=minio-enterprise
@@ -90,6 +90,39 @@ deploy-down:
 	@echo "$(CYAN)Stopping deployment...$(NC)"
 	cd deployments/docker && $(DOCKER_COMPOSE) down
 	@echo "$(GREEN)✓ Deployment stopped$(NC)"
+
+## api-docs: Start API documentation server
+api-docs:
+	@echo "$(CYAN)Starting API documentation server...$(NC)"
+	@if command -v $(GO) >/dev/null 2>&1; then \
+		$(GO) run cmd/api-docs-server/main.go & \
+		echo "$(GREEN)✓ API documentation server started$(NC)"; \
+		echo "$(CYAN)Open in browser: http://localhost:8080/index.html$(NC)"; \
+	else \
+		echo "$(RED)Go not installed. Using Python HTTP server...$(NC)"; \
+		cd docs/api && python3 -m http.server 8080 & \
+		echo "$(GREEN)✓ API documentation server started$(NC)"; \
+		echo "$(CYAN)Open in browser: http://localhost:8080$(NC)"; \
+	fi
+
+## api-docs-build: Build API documentation Docker image
+api-docs-build:
+	@echo "$(CYAN)Building API documentation Docker image...$(NC)"
+	$(DOCKER) build -f deployments/docker/api-docs.Dockerfile -t minio-api-docs:latest .
+	@echo "$(GREEN)✓ API documentation image built$(NC)"
+
+## api-docs-deploy: Deploy API documentation with Docker
+api-docs-deploy: api-docs-build
+	@echo "$(CYAN)Deploying API documentation...$(NC)"
+	cd deployments/docker && $(DOCKER_COMPOSE) -f docker-compose.api-docs.yml up -d
+	@echo "$(GREEN)✓ API documentation deployed$(NC)"
+	@echo "$(CYAN)Access at: http://localhost:8080$(NC)"
+
+## api-docs-stop: Stop API documentation server
+api-docs-stop:
+	@echo "$(CYAN)Stopping API documentation server...$(NC)"
+	cd deployments/docker && $(DOCKER_COMPOSE) -f docker-compose.api-docs.yml down 2>/dev/null || true
+	@echo "$(GREEN)✓ API documentation stopped$(NC)"
 
 ## clean: Clean build artifacts
 clean:
