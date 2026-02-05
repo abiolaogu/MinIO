@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  api-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: minio-api-docs
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - minio-network
+
+networks:
+  minio-network:
+    driver: bridge
