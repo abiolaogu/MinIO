@@ -31,4 +31,7 @@ scrape_configs:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: []
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - '/etc/prometheus/alert_rules.yml'

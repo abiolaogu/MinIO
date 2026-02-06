@@ -1,0 +1,416 @@
+# Prometheus Alert Rules for MinIO Enterprise
+# These rules define when alerts should fire based on metrics collected from the MinIO cluster
+
+groups:
+  # ============================================================
+  # Performance Alerts
+  # ============================================================
+  - name: performance_alerts
+    interval: 30s
+    rules:
+      # High P99 Latency Alert
+      - alert: HighP99Latency
+        expr: histogram_quantile(0.99, rate(minio_api_request_duration_seconds_bucket[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: high
+          category: performance
+          component: api
+        annotations:
+          summary: "High P99 API latency detected"
+          description: "P99 latency is {{ $value | humanizeDuration }} (threshold: 50ms) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-latency"
+
+      # High Replication Lag Alert
+      - alert: HighReplicationLag
+        expr: minio_replication_lag_seconds > 0.1
+        for: 5m
+        labels:
+          severity: high
+          category: performance
+          component: replication
+        annotations:
+          summary: "High replication lag detected"
+          description: "Replication lag is {{ $value | humanizeDuration }} (threshold: 100ms) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/replication-lag"
+
+      # Low Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: (rate(minio_cache_hits_total[5m]) / (rate(minio_cache_hits_total[5m]) + rate(minio_cache_misses_total[5m]))) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          component: cache
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/low-cache-hit-rate"
+
+      # High Cache Eviction Rate
+      - alert: HighCacheEvictionRate
+        expr: rate(minio_cache_evictions_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          component: cache
+        annotations:
+          summary: "High cache eviction rate detected"
+          description: "Cache eviction rate is {{ $value }} evictions/sec (threshold: 1000/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-cache-eviction"
+
+      # Low Throughput Warning
+      - alert: LowThroughput
+        expr: rate(minio_api_requests_total[5m]) < 100
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          component: api
+        annotations:
+          summary: "Low API throughput detected"
+          description: "API throughput is {{ $value }} requests/sec (threshold: 100 req/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/low-throughput"
+
+      # Slow Replication Speed
+      - alert: SlowReplicationSpeed
+        expr: rate(minio_replication_bytes_total[5m]) < 10485760
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          component: replication
+        annotations:
+          summary: "Slow replication speed detected"
+          description: "Replication speed is {{ $value | humanize }}B/s (threshold: 10MB/s) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/slow-replication"
+
+  # ============================================================
+  # Security Alerts
+  # ============================================================
+  - name: security_alerts
+    interval: 30s
+    rules:
+      # High Authentication Failure Rate
+      - alert: HighAuthFailureRate
+        expr: (rate(minio_auth_failures_total[5m]) / rate(minio_auth_attempts_total[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: high
+          category: security
+          component: authentication
+        annotations:
+          summary: "High authentication failure rate detected"
+          description: "Auth failure rate is {{ $value | humanizePercentage }} (threshold: 20%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/auth-failures"
+
+      # High Security Events Rate
+      - alert: HighSecurityEvents
+        expr: rate(minio_security_events_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: high
+          category: security
+          component: access_control
+        annotations:
+          summary: "High rate of security events detected"
+          description: "Security events rate is {{ $value }} events/sec (threshold: 10/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/security-events"
+
+      # Unauthorized Access Attempts
+      - alert: UnauthorizedAccessAttempts
+        expr: rate(minio_unauthorized_access_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+          component: access_control
+        annotations:
+          summary: "Multiple unauthorized access attempts detected"
+          description: "Unauthorized access rate is {{ $value }} attempts/sec (threshold: 5/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/unauthorized-access"
+
+      # Suspicious API Usage Pattern
+      - alert: SuspiciousAPIUsage
+        expr: rate(minio_api_errors_total{code=~"4.*"}[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          component: api
+        annotations:
+          summary: "Suspicious API usage pattern detected"
+          description: "High 4xx error rate: {{ $value }} errors/sec (threshold: 50/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/suspicious-api-usage"
+
+      # Token Validation Failures
+      - alert: TokenValidationFailures
+        expr: rate(minio_token_validation_failures_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: high
+          category: security
+          component: authentication
+        annotations:
+          summary: "High token validation failure rate"
+          description: "Token validation failures: {{ $value }} failures/sec (threshold: 10/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/token-failures"
+
+      # Rate Limiting Events
+      - alert: HighRateLimitingEvents
+        expr: rate(minio_rate_limit_hits_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          component: rate_limiter
+        annotations:
+          summary: "High rate of rate limiting events"
+          description: "Rate limiting hits: {{ $value }} hits/sec (threshold: 100/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/rate-limiting"
+
+  # ============================================================
+  # Operations Alerts
+  # ============================================================
+  - name: operations_alerts
+    interval: 30s
+    rules:
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanizePercentage }} (threshold: 80%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-cpu"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 85%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-memory"
+
+      # High Disk I/O
+      - alert: HighDiskIO
+        expr: rate(node_disk_io_time_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: operations
+          component: storage
+        annotations:
+          summary: "High disk I/O detected"
+          description: "Disk I/O utilization is {{ $value | humanizePercentage }} (threshold: 80%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-disk-io"
+
+      # Low Disk Space
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          category: operations
+          component: storage
+        annotations:
+          summary: "Low disk space detected"
+          description: "Available disk space is {{ $value | humanizePercentage }} (threshold: 15%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/low-disk-space"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(minio_api_errors_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "Error rate is {{ $value }} errors/sec (threshold: 10/sec) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-error-rate"
+
+      # Node Down
+      - alert: NodeDown
+        expr: up{job="minio"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: operations
+          component: cluster
+        annotations:
+          summary: "MinIO node is down"
+          description: "Node {{ $labels.instance }} has been down for more than 2 minutes"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/node-down"
+
+      # Service Unavailable
+      - alert: ServiceUnavailable
+        expr: up{job="minio"} < 2
+        for: 5m
+        labels:
+          severity: critical
+          category: operations
+          component: cluster
+        annotations:
+          summary: "MinIO cluster has too few nodes"
+          description: "Only {{ $value }} nodes are up (minimum: 2 for HA)"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/service-unavailable"
+
+      # High Goroutine Count
+      - alert: HighGoroutineCount
+        expr: go_goroutines > 10000
+        for: 10m
+        labels:
+          severity: warning
+          category: operations
+          component: runtime
+        annotations:
+          summary: "High goroutine count detected"
+          description: "Goroutine count is {{ $value }} (threshold: 10000) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/high-goroutines"
+
+      # Long GC Pause Times
+      - alert: LongGCPauseTimes
+        expr: rate(go_gc_duration_seconds_sum[5m]) / rate(go_gc_duration_seconds_count[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: operations
+          component: runtime
+        annotations:
+          summary: "Long GC pause times detected"
+          description: "Average GC pause time is {{ $value | humanizeDuration }} (threshold: 100ms) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/long-gc-pauses"
+
+      # Connection Pool Exhaustion
+      - alert: ConnectionPoolExhaustion
+        expr: minio_connection_pool_active / minio_connection_pool_total > 0.9
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: networking
+        annotations:
+          summary: "Connection pool near exhaustion"
+          description: "Connection pool usage is {{ $value | humanizePercentage }} (threshold: 90%) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/connection-pool-exhaustion"
+
+  # ============================================================
+  # Cluster Health Alerts
+  # ============================================================
+  - name: cluster_health_alerts
+    interval: 30s
+    rules:
+      # Cluster Degraded
+      - alert: ClusterDegraded
+        expr: count(up{job="minio"} == 1) < 4
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: cluster
+        annotations:
+          summary: "MinIO cluster is degraded"
+          description: "Only {{ $value }} of 4 nodes are healthy"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/cluster-degraded"
+
+      # Split Brain Detection
+      - alert: SplitBrain
+        expr: count(minio_cluster_nodes_online) > 1 and count(count by (cluster_id) (minio_cluster_nodes_online)) > 1
+        for: 5m
+        labels:
+          severity: critical
+          category: operations
+          component: cluster
+        annotations:
+          summary: "Possible split-brain condition detected"
+          description: "Multiple cluster IDs detected - potential split-brain scenario"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/split-brain"
+
+      # Data Inconsistency
+      - alert: DataInconsistency
+        expr: minio_data_consistency_errors_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: operations
+          component: storage
+        annotations:
+          summary: "Data inconsistency detected"
+          description: "{{ $value }} data consistency errors detected on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/data-inconsistency"
+
+  # ============================================================
+  # Tenant Management Alerts
+  # ============================================================
+  - name: tenant_alerts
+    interval: 30s
+    rules:
+      # Tenant Quota Exceeded
+      - alert: TenantQuotaExceeded
+        expr: minio_tenant_storage_used_bytes / minio_tenant_quota_bytes > 0.95
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: tenant
+        annotations:
+          summary: "Tenant quota nearly exceeded"
+          description: "Tenant {{ $labels.tenant }} is at {{ $value | humanizePercentage }} of quota"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/tenant-quota"
+
+      # Tenant Isolation Violation
+      - alert: TenantIsolationViolation
+        expr: minio_tenant_isolation_violations_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+          component: tenant
+        annotations:
+          summary: "Tenant isolation violation detected"
+          description: "{{ $value }} isolation violations for tenant {{ $labels.tenant }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/tenant-isolation"
+
+  # ============================================================
+  # Replication Alerts
+  # ============================================================
+  - name: replication_alerts
+    interval: 30s
+    rules:
+      # Replication Failed
+      - alert: ReplicationFailed
+        expr: rate(minio_replication_failures_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: high
+          category: operations
+          component: replication
+        annotations:
+          summary: "Replication failures detected"
+          description: "Replication failure rate: {{ $value }} failures/sec on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/replication-failures"
+
+      # Replication Queue Backlog
+      - alert: ReplicationQueueBacklog
+        expr: minio_replication_queue_length > 10000
+        for: 10m
+        labels:
+          severity: warning
+          category: operations
+          component: replication
+        annotations:
+          summary: "Large replication queue backlog"
+          description: "Replication queue length: {{ $value }} items (threshold: 10000) on {{ $labels.instance }}"
+          runbook_url: "https://docs.minio-enterprise.com/runbooks/replication-backlog"

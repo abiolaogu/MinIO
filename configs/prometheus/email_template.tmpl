@@ -1,0 +1,270 @@
+{{ define "email.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #e74c3c;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header.warning {
+            border-bottom-color: #f39c12;
+        }
+        .header.info {
+            border-bottom-color: #3498db;
+        }
+        .header.resolved {
+            border-bottom-color: #2ecc71;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #2c3e50;
+        }
+        .alert-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .alert-critical {
+            background-color: #fee;
+            border-left: 4px solid #e74c3c;
+        }
+        .alert-warning {
+            background-color: #fff4e5;
+            border-left: 4px solid #f39c12;
+        }
+        .alert-resolved {
+            background-color: #eafaf1;
+            border-left: 4px solid #2ecc71;
+        }
+        .alert-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+        .alert-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .label {
+            display: inline-block;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .label-severity-critical {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .label-severity-high {
+            background-color: #e67e22;
+            color: white;
+        }
+        .label-severity-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+        .label-severity-info {
+            background-color: #3498db;
+            color: white;
+        }
+        .label-default {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .metric {
+            font-family: 'Courier New', monospace;
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .summary {
+            font-size: 16px;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        .description {
+            color: #555;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e4e8;
+            font-size: 14px;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {{ if gt (len .Alerts.Firing) 0 }}
+        <div class="header {{ if eq .GroupLabels.severity "critical" }}critical{{ else if eq .GroupLabels.severity "warning" }}warning{{ else }}info{{ end }}">
+            <h1>🚨 MinIO Enterprise Alert</h1>
+        </div>
+        {{ else }}
+        <div class="header resolved">
+            <h1>✅ MinIO Enterprise Alert Resolved</h1>
+        </div>
+        {{ end }}
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" style="color: #e74c3c;">{{ .Alerts.Firing | len }}</div>
+                <div class="stat-label">Firing</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" style="color: #2ecc71;">{{ .Alerts.Resolved | len }}</div>
+                <div class="stat-label">Resolved</div>
+            </div>
+        </div>
+
+        <div class="alert-info {{ if gt (len .Alerts.Firing) 0 }}alert-{{ .GroupLabels.severity }}{{ else }}alert-resolved{{ end }}">
+            <strong>Alert Group:</strong> {{ .GroupLabels.alertname }}<br>
+            <strong>Cluster:</strong> {{ .GroupLabels.cluster }}<br>
+            <strong>Severity:</strong> <span class="label label-severity-{{ .GroupLabels.severity }}">{{ .GroupLabels.severity | toUpper }}</span><br>
+            <strong>Category:</strong> {{ .GroupLabels.category }}<br>
+            {{ if .GroupLabels.component }}<strong>Component:</strong> {{ .GroupLabels.component }}<br>{{ end }}
+            {{ if .GroupLabels.service }}<strong>Service:</strong> {{ .GroupLabels.service }}<br>{{ end }}
+        </div>
+
+        {{ if gt (len .Alerts.Firing) 0 }}
+        <h2>🔥 Firing Alerts</h2>
+        {{ range .Alerts.Firing }}
+        <div class="alert-item">
+            <div class="alert-name">{{ .Labels.alertname }}</div>
+
+            <div class="summary">
+                <strong>Summary:</strong> {{ .Annotations.summary }}
+            </div>
+
+            {{ if .Annotations.description }}
+            <div class="description">
+                <strong>Description:</strong> {{ .Annotations.description }}
+            </div>
+            {{ end }}
+
+            <div class="metric">
+                <strong>Instance:</strong> {{ .Labels.instance }}<br>
+                <strong>Started:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+            </div>
+
+            {{ if .Annotations.runbook_url }}
+            <a href="{{ .Annotations.runbook_url }}" class="button">📖 View Runbook</a>
+            {{ end }}
+
+            <div style="margin-top: 15px;">
+                <strong>Labels:</strong><br>
+                {{ range .Labels.SortedPairs }}
+                    <span class="label label-default">{{ .Name }}: {{ .Value }}</span>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+        {{ end }}
+
+        {{ if gt (len .Alerts.Resolved) 0 }}
+        <h2>✅ Resolved Alerts</h2>
+        {{ range .Alerts.Resolved }}
+        <div class="alert-item" style="background-color: #f0fdf4;">
+            <div class="alert-name">{{ .Labels.alertname }}</div>
+
+            <div class="summary">
+                <strong>Summary:</strong> {{ .Annotations.summary }}
+            </div>
+
+            <div class="metric">
+                <strong>Instance:</strong> {{ .Labels.instance }}<br>
+                <strong>Started:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}<br>
+                <strong>Resolved:</strong> {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}<br>
+                <strong>Duration:</strong> {{ .EndsAt.Sub .StartsAt }}
+            </div>
+        </div>
+        {{ end }}
+        {{ end }}
+
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="{{ .ExternalURL }}" class="button">🔍 View in AlertManager</a>
+            <a href="http://localhost:3000" class="button">📊 View in Grafana</a>
+            <a href="http://localhost:9090" class="button">📈 View in Prometheus</a>
+        </div>
+
+        <div class="footer">
+            <p>
+                This alert was generated by AlertManager for MinIO Enterprise<br>
+                <strong>Cluster:</strong> {{ .GroupLabels.cluster }} |
+                <strong>Environment:</strong> {{ .CommonLabels.environment }}<br>
+                <em>Generated at {{ now.Format "2006-01-02 15:04:05 MST" }}</em>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+{{ end }}

@@ -1,0 +1,258 @@
+# AlertManager Configuration for MinIO Enterprise
+# This configuration defines how alerts are routed, grouped, and sent to various notification channels
+
+global:
+  # Global settings
+  resolve_timeout: 5m  # How long to wait before considering an alert resolved
+
+  # SMTP configuration for email notifications
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@minio-enterprise.com'
+  smtp_auth_username: 'alertmanager@minio-enterprise.com'
+  smtp_auth_password: '${SMTP_PASSWORD}'  # Set via environment variable
+  smtp_require_tls: true
+
+  # Slack webhook URL (set via environment variable)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+  # PagerDuty integration key (set via environment variable)
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Templates for notification messages
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert distribution
+route:
+  # Default receiver for alerts that don't match any route
+  receiver: 'default'
+
+  # How long to wait before sending a notification about new alerts
+  group_wait: 30s
+
+  # How long to wait before sending notification about new alerts for a group
+  group_interval: 5m
+
+  # How long to wait before re-sending a given alert
+  repeat_interval: 4h
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'cluster', 'service', 'severity']
+
+  # Child routes (evaluated in order)
+  routes:
+    # Critical alerts - immediate notification via PagerDuty
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true  # Also send to other receivers
+
+    # Critical alerts - also send to Slack
+    - match:
+        severity: critical
+      receiver: 'slack-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # High severity alerts - Slack and email
+    - match:
+        severity: high
+      receiver: 'slack-high-severity'
+      group_wait: 30s
+      repeat_interval: 2h
+
+    # Performance alerts
+    - match:
+        category: performance
+      receiver: 'performance-team'
+      group_by: ['alertname', 'cluster', 'instance']
+      group_wait: 1m
+      repeat_interval: 3h
+
+    # Security alerts
+    - match:
+        category: security
+      receiver: 'security-team'
+      group_by: ['alertname', 'cluster', 'tenant']
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # Operations alerts
+    - match:
+        category: operations
+      receiver: 'operations-team'
+      group_by: ['alertname', 'cluster', 'node']
+      group_wait: 1m
+      repeat_interval: 3h
+
+    # Warning level alerts - email only
+    - match:
+        severity: warning
+      receiver: 'email-warnings'
+      group_wait: 5m
+      repeat_interval: 12h
+
+    # Info level alerts - aggregated daily summary
+    - match:
+        severity: info
+      receiver: 'email-daily-summary'
+      group_wait: 12h
+      repeat_interval: 24h
+
+# Alert receivers (notification channels)
+receivers:
+  # Default receiver (catch-all)
+  - name: 'default'
+    email_configs:
+      - to: 'ops-team@example.com'
+        headers:
+          Subject: '[MinIO Alert] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+
+  # PagerDuty for critical alerts
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        severity: 'critical'
+        description: '{{ .GroupLabels.alertname }} - {{ .GroupLabels.cluster }}'
+        details:
+          firing: '{{ .Alerts.Firing | len }}'
+          resolved: '{{ .Alerts.Resolved | len }}'
+          summary: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+  # Slack for critical alerts
+  - name: 'slack-critical'
+    slack_configs:
+      - channel: '#minio-critical-alerts'
+        username: 'AlertManager'
+        icon_emoji: ':fire:'
+        color: 'danger'
+        title: ':fire: Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |-
+          *Cluster:* {{ .GroupLabels.cluster }}
+          *Severity:* {{ .GroupLabels.severity }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+          *Description:* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+
+          *Firing Alerts:* {{ .Alerts.Firing | len }}
+        send_resolved: true
+
+  # Slack for high severity alerts
+  - name: 'slack-high-severity'
+    slack_configs:
+      - channel: '#minio-alerts'
+        username: 'AlertManager'
+        icon_emoji: ':warning:'
+        color: 'warning'
+        title: ':warning: High Severity: {{ .GroupLabels.alertname }}'
+        text: |-
+          *Cluster:* {{ .GroupLabels.cluster }}
+          *Severity:* {{ .GroupLabels.severity }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+
+          *Firing Alerts:* {{ .Alerts.Firing | len }}
+        send_resolved: true
+
+  # Performance team notifications
+  - name: 'performance-team'
+    email_configs:
+      - to: 'performance-team@example.com'
+        headers:
+          Subject: '[Performance] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+    slack_configs:
+      - channel: '#minio-performance'
+        username: 'AlertManager'
+        icon_emoji: ':chart_with_upwards_trend:'
+        title: 'Performance Alert: {{ .GroupLabels.alertname }}'
+        text: |-
+          *Instance:* {{ .GroupLabels.instance }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+
+  # Security team notifications
+  - name: 'security-team'
+    email_configs:
+      - to: 'security-team@example.com'
+        headers:
+          Subject: '[Security] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+    slack_configs:
+      - channel: '#minio-security'
+        username: 'AlertManager'
+        icon_emoji: ':shield:'
+        color: 'warning'
+        title: 'Security Alert: {{ .GroupLabels.alertname }}'
+        text: |-
+          *Tenant:* {{ .GroupLabels.tenant }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+          *Description:* {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+
+  # Operations team notifications
+  - name: 'operations-team'
+    email_configs:
+      - to: 'ops-team@example.com'
+        headers:
+          Subject: '[Operations] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+    slack_configs:
+      - channel: '#minio-operations'
+        username: 'AlertManager'
+        icon_emoji: ':gear:'
+        title: 'Operations Alert: {{ .GroupLabels.alertname }}'
+        text: |-
+          *Node:* {{ .GroupLabels.node }}
+          *Summary:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+
+  # Warning level email notifications
+  - name: 'email-warnings'
+    email_configs:
+      - to: 'ops-team@example.com'
+        headers:
+          Subject: '[Warning] {{ .GroupLabels.alertname }}'
+        html: '{{ template "email.html" . }}'
+
+  # Daily summary email
+  - name: 'email-daily-summary'
+    email_configs:
+      - to: 'ops-team@example.com'
+        headers:
+          Subject: '[Daily Summary] MinIO Alerts'
+        html: '{{ template "email.html" . }}'
+
+# Inhibition rules (prevent certain alerts when others are firing)
+inhibit_rules:
+  # Inhibit warning/info alerts when critical alerts are firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'instance']
+
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'info'
+    equal: ['alertname', 'cluster', 'instance']
+
+  # Inhibit node alerts when entire cluster is down
+  - source_match:
+      alertname: 'ClusterDown'
+    target_match_re:
+      alertname: 'Node.*'
+    equal: ['cluster']
+
+  # Inhibit cache alerts when node is down
+  - source_match:
+      alertname: 'NodeDown'
+    target_match_re:
+      alertname: 'Cache.*|Replication.*'
+    equal: ['cluster', 'node']
+
+  # Inhibit performance alerts during maintenance
+  - source_match:
+      alertname: 'MaintenanceMode'
+    target_match:
+      category: 'performance'
+    equal: ['cluster']
