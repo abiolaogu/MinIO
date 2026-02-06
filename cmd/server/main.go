@@ -17,6 +17,10 @@ import (
 	"github.com/minio/enterprise/internal/cache"
 	"github.com/minio/enterprise/internal/replication"
 	"github.com/minio/enterprise/internal/tenant"
+	"github.com/minio/enterprise/internal/tracing"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -62,6 +66,15 @@ func main() {
 	fmt.Println("================================================")
 	fmt.Printf("CPUs: %d, GOMAXPROCS: %d\n", runtime.NumCPU(), runtime.GOMAXPROCS(0))
 
+	// Initialize distributed tracing
+	jaegerEndpoint := os.Getenv("JAEGER_ENDPOINT")
+	if jaegerEndpoint == "" {
+		jaegerEndpoint = "http://jaeger:14268/api/traces"
+	}
+	if err := tracing.InitTracing(jaegerEndpoint); err != nil {
+		log.Printf("Warning: Failed to initialize tracing: %v", err)
+	}
+
 	// Create server
 	srv, err := NewMinIOServer()
 	if err != nil {
@@ -79,6 +92,14 @@ func main() {
 	<-sigCh
 
 	fmt.Println("\n🛑 Shutting down gracefully...")
+
+	// Shutdown tracing
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+	if err := tracing.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Tracing shutdown error: %v", err)
+	}
+
 	if err := srv.Shutdown(); err != nil {
 		log.Printf("Shutdown error: %v", err)
 	}
@@ -269,7 +290,16 @@ func (s *MinIOServer) handleReady(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *MinIOServer) handleUpload(w http.ResponseWriter, r *http.Request) {
+	// Start distributed trace
+	tracer := tracing.GetTracer("http")
+	ctx, span := tracing.StartSpan(r.Context(), tracer, "PUT /upload",
+		attribute.String("http.method", r.Method),
+		attribute.String("http.url", r.URL.String()),
+	)
+	defer span.End()
+
 	if r.Method != http.MethodPut && r.Method != http.MethodPost {
+		tracing.AddSpanEvent(ctx, "method_not_allowed")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -277,71 +307,119 @@ func (s *MinIOServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Extract parameters
 	tenantID := r.Header.Get("X-Tenant-ID")
 	key := r.URL.Query().Get("key")
+	tracing.AddSpanAttributes(ctx,
+		attribute.String("tenant.id", tenantID),
+		attribute.String("object.key", key),
+	)
 
 	if tenantID == "" || key == "" {
+		tracing.AddSpanEvent(ctx, "validation_failed",
+			attribute.String("error", "missing tenant ID or key"),
+		)
 		http.Error(w, "Missing tenant ID or key", http.StatusBadRequest)
 		return
 	}
 
 	// Read body
+	_, readSpan := tracing.StartSpan(ctx, tracer, "read_body")
 	data := make([]byte, r.ContentLength)
 	if _, err := r.Body.Read(data); err != nil && err.Error() != "EOF" {
+		tracing.RecordError(ctx, err)
+		readSpan.End()
 		http.Error(w, "Failed to read body", http.StatusInternalServerError)
 		return
 	}
+	tracing.AddSpanAttributes(ctx, attribute.Int("object.size", len(data)))
+	readSpan.End()
 
 	// Check quota
-	canUpload, err := s.tenantManager.CheckQuota(r.Context(), tenantID, int64(len(data)))
+	_, quotaSpan := tracing.StartSpan(ctx, tracer, "check_quota")
+	canUpload, err := s.tenantManager.CheckQuota(ctx, tenantID, int64(len(data)))
 	if err != nil || !canUpload {
+		tracing.AddSpanEvent(ctx, "quota_exceeded")
+		quotaSpan.End()
 		http.Error(w, "Quota exceeded", http.StatusForbidden)
 		return
 	}
+	quotaSpan.End()
 
 	// Store in cache
-	if err := s.cacheManager.Set(r.Context(), key, data); err != nil {
+	_, cacheSpan := tracing.StartSpan(ctx, tracer, "cache_set")
+	if err := s.cacheManager.Set(ctx, key, data); err != nil {
+		tracing.RecordError(ctx, err)
+		cacheSpan.End()
 		http.Error(w, "Failed to store object", http.StatusInternalServerError)
 		return
 	}
+	cacheSpan.End()
 
 	// Update quota
-	if err := s.tenantManager.UpdateQuota(r.Context(), tenantID, int64(len(data)), 1, int64(len(data))); err != nil {
+	_, updateQuotaSpan := tracing.StartSpan(ctx, tracer, "update_quota")
+	if err := s.tenantManager.UpdateQuota(ctx, tenantID, int64(len(data)), 1, int64(len(data))); err != nil {
 		log.Printf("Failed to update quota: %v", err)
+		tracing.RecordError(ctx, err)
 	}
+	updateQuotaSpan.End()
 
 	// Async replication
+	tracing.AddSpanEvent(ctx, "enqueue_replication")
 	go s.replicationEngine.Enqueue("default", key, "v1", data)
 
+	tracing.AddSpanEvent(ctx, "upload_completed")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"uploaded","key":"` + key + `","size":` + fmt.Sprintf("%d", len(data)) + `}`))
 }
 
 func (s *MinIOServer) handleDownload(w http.ResponseWriter, r *http.Request) {
+	// Start distributed trace
+	tracer := tracing.GetTracer("http")
+	ctx, span := tracing.StartSpan(r.Context(), tracer, "GET /download",
+		attribute.String("http.method", r.Method),
+		attribute.String("http.url", r.URL.String()),
+	)
+	defer span.End()
+
 	if r.Method != http.MethodGet {
+		tracing.AddSpanEvent(ctx, "method_not_allowed")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	tenantID := r.Header.Get("X-Tenant-ID")
 	key := r.URL.Query().Get("key")
+	tracing.AddSpanAttributes(ctx,
+		attribute.String("tenant.id", tenantID),
+		attribute.String("object.key", key),
+	)
 
 	if tenantID == "" || key == "" {
+		tracing.AddSpanEvent(ctx, "validation_failed")
 		http.Error(w, "Missing tenant ID or key", http.StatusBadRequest)
 		return
 	}
 
 	// Get from cache
-	data, err := s.cacheManager.Get(r.Context(), key)
+	_, cacheSpan := tracing.StartSpan(ctx, tracer, "cache_get")
+	data, err := s.cacheManager.Get(ctx, key)
 	if err != nil {
+		tracing.RecordError(ctx, err)
+		cacheSpan.End()
 		http.Error(w, "Object not found", http.StatusNotFound)
 		return
 	}
+	tracing.AddSpanAttributes(ctx, attribute.Int("object.size", len(data)))
+	cacheSpan.End()
 
 	// Update quota (bandwidth)
-	if err := s.tenantManager.UpdateQuota(r.Context(), tenantID, 0, 1, int64(len(data))); err != nil {
+	_, quotaSpan := tracing.StartSpan(ctx, tracer, "update_quota")
+	if err := s.tenantManager.UpdateQuota(ctx, tenantID, 0, 1, int64(len(data))); err != nil {
 		log.Printf("Failed to update quota: %v", err)
+		tracing.RecordError(ctx, err)
 	}
+	quotaSpan.End()
 
+	tracing.AddSpanEvent(ctx, "download_completed")
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
