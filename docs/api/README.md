@@ -31,20 +31,47 @@ MinIO Enterprise provides a high-performance object storage API with:
 
 ## Viewing the Documentation
 
-### Option 1: Swagger UI (Online)
+### Option 1: Integrated Swagger UI (Recommended) ✨ NEW
+We now have a custom Swagger UI integration with enhanced features!
+
+```bash
+# From the docs/api directory
+docker-compose up -d
+
+# Access the documentation at:
+# http://localhost:8080
+```
+
+**Features**:
+- Interactive API testing with "Try it out" functionality
+- Persistent authentication headers
+- Syntax highlighting with Monokai theme
+- Request duration display
+- Full search capabilities
+- Auto-generated code examples
+
+Stop the server:
+```bash
+docker-compose down
+```
+
+**Alternative without Docker**:
+```bash
+# Using Python's built-in HTTP server
+cd docs/api
+python3 -m http.server 8080
+
+# Or using Node.js http-server
+npx http-server -p 8080
+
+# Access at http://localhost:8080
+```
+
+### Option 2: Swagger UI (Online)
 1. Go to [Swagger Editor](https://editor.swagger.io/)
 2. Copy the contents of `openapi.yaml`
 3. Paste into the editor
 4. View the interactive documentation
-
-### Option 2: Swagger UI (Local with Docker)
-```bash
-docker run -p 8080:8080 \
-  -e SWAGGER_JSON=/api/openapi.yaml \
-  -v $(pwd)/docs/api:/api \
-  swaggerapi/swagger-ui
-```
-Then open: http://localhost:8080
 
 ### Option 3: Redoc (Local with Docker)
 ```bash
@@ -167,7 +194,7 @@ Health check and metrics endpoints do not require authentication.
 
 ## Next Steps
 
-1. **Swagger UI Integration**: Deploy Swagger UI for interactive documentation
+1. ~~**Swagger UI Integration**: Deploy Swagger UI for interactive documentation~~ ✅ COMPLETED (2026-02-05)
 2. **SDK Generation**: Generate official client libraries (Go, Python, JavaScript)
 3. **API Testing**: Add automated API tests using the specification
 4. **Versioning**: Implement API versioning strategy (/api/v1, /api/v2)
