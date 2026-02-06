@@ -1,0 +1,179 @@
+# AlertManager Configuration for MinIO Enterprise
+# This configuration handles alert routing, grouping, and notification delivery
+
+global:
+  # Default timeout for notification delivery
+  resolve_timeout: 5m
+
+  # SMTP configuration (optional - configure if using email notifications)
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alerts@minio-enterprise.com'
+  # smtp_auth_username: 'alerts@minio-enterprise.com'
+  # smtp_auth_password: 'your-smtp-password'
+  # smtp_require_tls: true
+
+# Alert routing tree
+route:
+  # Default receiver for all alerts
+  receiver: 'default-receiver'
+
+  # Group alerts by these labels to reduce notification noise
+  group_by: ['alertname', 'cluster', 'service']
+
+  # Wait time before sending first notification for a group
+  group_wait: 30s
+
+  # Wait time before sending notification about new alerts in existing group
+  group_interval: 5m
+
+  # Wait time before re-sending notification if alert is still firing
+  repeat_interval: 4h
+
+  # Child routes with specific routing rules
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # Performance alerts
+    - match:
+        category: performance
+      receiver: 'performance-team'
+      group_interval: 10m
+      repeat_interval: 12h
+
+    # Security alerts
+    - match:
+        category: security
+      receiver: 'security-team'
+      group_wait: 10s
+      repeat_interval: 2h
+
+    # Operations alerts
+    - match:
+        category: operations
+      receiver: 'operations-team'
+      group_interval: 10m
+      repeat_interval: 6h
+
+# Inhibition rules - suppress notifications for certain alert combinations
+inhibit_rules:
+  # Inhibit all alerts if cluster is down
+  - source_match:
+      alertname: 'ClusterDown'
+    target_match_re:
+      alertname: '.*'
+    equal: ['cluster']
+
+  # Inhibit warning alerts if critical alert is firing for same service
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+# Notification receivers
+receivers:
+  # Default receiver - logs to console
+  - name: 'default-receiver'
+    # webhook_configs:
+    #   - url: 'http://localhost:5001/webhook'
+
+  # Critical alerts - multiple notification channels
+  - name: 'critical-alerts'
+    # Email notifications (configure SMTP settings above)
+    # email_configs:
+    #   - to: 'oncall@minio-enterprise.com'
+    #     subject: '[CRITICAL] MinIO Enterprise Alert: {{ .GroupLabels.alertname }}'
+    #     html: |
+    #       <h2>Critical Alert Fired</h2>
+    #       <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
+    #       <p><strong>Severity:</strong> {{ .CommonLabels.severity }}</p>
+    #       <p><strong>Cluster:</strong> {{ .CommonLabels.cluster }}</p>
+    #       <p><strong>Summary:</strong> {{ .CommonAnnotations.summary }}</p>
+    #       <p><strong>Description:</strong> {{ .CommonAnnotations.description }}</p>
+    #       <hr>
+    #       {{ range .Alerts }}
+    #       <p>{{ .Annotations.description }}</p>
+    #       {{ end }}
+
+    # Slack notifications (configure webhook URL)
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    #     channel: '#critical-alerts'
+    #     title: '[CRITICAL] {{ .GroupLabels.alertname }}'
+    #     text: |
+    #       *Alert:* {{ .GroupLabels.alertname }}
+    #       *Severity:* {{ .CommonLabels.severity }}
+    #       *Cluster:* {{ .CommonLabels.cluster }}
+    #       *Summary:* {{ .CommonAnnotations.summary }}
+    #       {{ range .Alerts }}
+    #       {{ .Annotations.description }}
+    #       {{ end }}
+
+    # PagerDuty integration (configure integration key)
+    # pagerduty_configs:
+    #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+    #     description: '{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}'
+
+    # Webhook for custom integrations
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/critical'
+        send_resolved: true
+
+  # Performance team notifications
+  - name: 'performance-team'
+    # email_configs:
+    #   - to: 'performance-team@minio-enterprise.com'
+    #     subject: '[PERFORMANCE] MinIO Alert: {{ .GroupLabels.alertname }}'
+
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    #     channel: '#performance-alerts'
+    #     title: '[PERFORMANCE] {{ .GroupLabels.alertname }}'
+    #     text: '{{ .CommonAnnotations.summary }}'
+
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/performance'
+        send_resolved: true
+
+  # Security team notifications
+  - name: 'security-team'
+    # email_configs:
+    #   - to: 'security-team@minio-enterprise.com'
+    #     subject: '[SECURITY] MinIO Alert: {{ .GroupLabels.alertname }}'
+
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    #     channel: '#security-alerts'
+    #     title: '[SECURITY] {{ .GroupLabels.alertname }}'
+    #     text: '{{ .CommonAnnotations.summary }}'
+    #     color: 'danger'
+
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/security'
+        send_resolved: true
+
+  # Operations team notifications
+  - name: 'operations-team'
+    # email_configs:
+    #   - to: 'operations-team@minio-enterprise.com'
+    #     subject: '[OPS] MinIO Alert: {{ .GroupLabels.alertname }}'
+
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    #     channel: '#ops-alerts'
+    #     title: '[OPS] {{ .GroupLabels.alertname }}'
+    #     text: '{{ .CommonAnnotations.summary }}'
+
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/operations'
+        send_resolved: true
+
+# Templates for custom notification formats
+# templates:
+#   - '/etc/alertmanager/templates/*.tmpl'

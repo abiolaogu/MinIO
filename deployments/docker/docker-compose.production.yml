@@ -267,6 +267,7 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../configs/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -275,6 +276,8 @@ services:
       - '--storage.tsdb.retention.size=50GB'
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
+    depends_on:
+      - alertmanager
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
       interval: 30s
@@ -285,6 +288,36 @@ services:
         limits:
           cpus: '2'
           memory: 4G
+
+  # ============================================================
+  # AlertManager - Alert handling and routing
+  # ============================================================
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    networks:
+      - minio-network
+    ports:
+      - "9093:9093"
+    volumes:
+      - ../../configs/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+      - '--cluster.advertise-address=0.0.0.0:9093'
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
 
   # ============================================================
   # Grafana - Visualization
@@ -418,6 +451,8 @@ volumes:
   redis-data:
     driver: local
   prometheus-data:
+    driver: local
+  alertmanager-data:
     driver: local
   grafana-data:
     driver: local

@@ -1,0 +1,279 @@
+# Prometheus Alert Rules for MinIO Enterprise
+# These rules correspond to the alerts defined in Grafana dashboards
+
+groups:
+  # ============================================================
+  # PERFORMANCE ALERTS
+  # ============================================================
+  - name: performance_alerts
+    interval: 30s
+    rules:
+      # High P99 Latency Alert
+      - alert: HighP99Latency
+        expr: histogram_quantile(0.99, sum(rate(minio_http_requests_duration_seconds_bucket[5m])) by (le, api)) > 0.050
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: minio
+          component: api
+        annotations:
+          summary: "High P99 latency detected"
+          description: "P99 latency is {{ $value | humanizeDuration }} which is above the 50ms threshold. This may impact user experience."
+          dashboard: "performance-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/high-latency"
+
+      # High Replication Lag Alert
+      - alert: HighReplicationLag
+        expr: minio_replication_lag_seconds > 0.100
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: minio
+          component: replication
+        annotations:
+          summary: "High replication lag detected"
+          description: "Replication lag is {{ $value | humanizeDuration }} which is above the 100ms threshold. Data synchronization may be delayed."
+          dashboard: "performance-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/replication-lag"
+
+      # Low Cache Hit Rate Alert
+      - alert: LowCacheHitRate
+        expr: (minio_cache_hits_total / (minio_cache_hits_total + minio_cache_misses_total)) < 0.70
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: minio
+          component: cache
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} which is below the 70% threshold. Consider cache warming or increasing cache size."
+          dashboard: "performance-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/cache-optimization"
+
+  # ============================================================
+  # SECURITY ALERTS
+  # ============================================================
+  - name: security_alerts
+    interval: 30s
+    rules:
+      # High Authentication Failure Rate Alert
+      - alert: HighAuthFailureRate
+        expr: (sum(rate(minio_auth_failures_total[5m])) / sum(rate(minio_auth_attempts_total[5m]))) > 0.20
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+          service: minio
+          component: authentication
+        annotations:
+          summary: "High authentication failure rate detected"
+          description: "Authentication failure rate is {{ $value | humanizePercentage }} which is above the 20% threshold. Possible brute force attack or misconfigured clients."
+          dashboard: "security-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/auth-failures"
+          action: "Review authentication logs and consider rate limiting"
+
+      # High Security Events Alert
+      - alert: HighSecurityEvents
+        expr: sum(rate(minio_security_events_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+          service: minio
+          component: security
+        annotations:
+          summary: "High rate of security events detected"
+          description: "Security events rate is {{ $value }} events/sec which is above the 10/sec threshold. Potential security incident in progress."
+          dashboard: "security-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/security-events"
+          action: "Investigate security logs immediately"
+
+      # Unauthorized Access Attempts Alert
+      - alert: UnauthorizedAccessAttempts
+        expr: sum(rate(minio_unauthorized_access_total[5m])) > 5
+        for: 3m
+        labels:
+          severity: warning
+          category: security
+          service: minio
+          component: authorization
+        annotations:
+          summary: "High rate of unauthorized access attempts"
+          description: "Unauthorized access attempts at {{ $value }} attempts/sec. Review access control policies."
+          dashboard: "security-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/unauthorized-access"
+
+      # Suspicious API Error Rate Alert
+      - alert: HighAPIErrorRate
+        expr: sum(rate(minio_http_requests_total{code=~"4..|5.."}[5m])) / sum(rate(minio_http_requests_total[5m])) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          service: minio
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "API error rate is {{ $value | humanizePercentage }} which is above the 10% threshold. Check for client misconfigurations or potential attacks."
+          dashboard: "security-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/api-errors"
+
+  # ============================================================
+  # OPERATIONS ALERTS
+  # ============================================================
+  - name: operations_alerts
+    interval: 30s
+    rules:
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: operations
+          service: minio
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% which is above the 80% threshold. Consider scaling or optimizing workload."
+          dashboard: "operations-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/high-cpu"
+
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: sum(rate(minio_errors_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: operations
+          service: minio
+          component: system
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec which is above the 10/sec threshold. System stability may be compromised."
+          dashboard: "operations-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/high-errors"
+
+      # Node Down Alert
+      - alert: NodeDown
+        expr: up{job="minio"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: operations
+          service: minio
+          component: cluster
+        annotations:
+          summary: "MinIO node is down"
+          description: "MinIO node {{ $labels.instance }} is unreachable. High availability may be compromised."
+          dashboard: "operations-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/node-down"
+          action: "Investigate node health and restart if necessary"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 / 1024 > 14
+        for: 10m
+        labels:
+          severity: warning
+          category: operations
+          service: minio
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}GB which is above the 14GB threshold (87.5% of 16GB limit). Consider increasing memory allocation."
+          dashboard: "operations-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/high-memory"
+
+      # Disk Space Low Alert
+      - alert: DiskSpaceLow
+        expr: (minio_disk_storage_used_bytes / minio_disk_storage_total_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: operations
+          service: minio
+          component: storage
+        annotations:
+          summary: "Disk space running low"
+          description: "Disk usage is {{ $value | humanizePercentage }} which is above the 85% threshold. Consider adding storage capacity."
+          dashboard: "operations-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/disk-space"
+
+  # ============================================================
+  # CLUSTER HEALTH ALERTS
+  # ============================================================
+  - name: cluster_health_alerts
+    interval: 30s
+    rules:
+      # Cluster Quorum Lost Alert
+      - alert: ClusterQuorumLost
+        expr: count(up{job="minio"} == 1) < 3
+        for: 2m
+        labels:
+          severity: critical
+          category: operations
+          service: minio
+          component: cluster
+        annotations:
+          summary: "Cluster quorum lost"
+          description: "Only {{ $value }} nodes are available out of 4. Cluster quorum lost - write operations may fail."
+          dashboard: "operations-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/quorum-lost"
+          action: "Restore nodes immediately to maintain cluster availability"
+
+      # Degraded Cluster Performance Alert
+      - alert: DegradedClusterPerformance
+        expr: sum(rate(minio_http_requests_total[5m])) < 1000
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: minio
+          component: cluster
+        annotations:
+          summary: "Degraded cluster performance"
+          description: "Cluster throughput is {{ $value }} req/sec which is below expected baseline. Investigate for bottlenecks."
+          dashboard: "performance-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/degraded-performance"
+
+  # ============================================================
+  # DATA INTEGRITY ALERTS
+  # ============================================================
+  - name: data_integrity_alerts
+    interval: 60s
+    rules:
+      # Replication Errors Alert
+      - alert: ReplicationErrors
+        expr: sum(rate(minio_replication_errors_total[10m])) > 1
+        for: 5m
+        labels:
+          severity: critical
+          category: operations
+          service: minio
+          component: replication
+        annotations:
+          summary: "Replication errors detected"
+          description: "Replication error rate is {{ $value }} errors/sec. Data synchronization may be failing."
+          dashboard: "performance-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/replication-errors"
+          action: "Check replication endpoints and network connectivity"
+
+      # Cache Corruption Alert
+      - alert: CacheCorruption
+        expr: sum(rate(minio_cache_corruption_total[10m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: operations
+          service: minio
+          component: cache
+        annotations:
+          summary: "Cache corruption detected"
+          description: "Cache corruption events detected at {{ $value }} events/sec. Data integrity may be compromised."
+          dashboard: "performance-dashboard"
+          runbook: "https://docs.minio-enterprise.com/runbooks/cache-corruption"
+          action: "Flush cache and investigate root cause immediately"
