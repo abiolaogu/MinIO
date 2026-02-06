@@ -70,5 +70,297 @@
             window.ui = ui;
         };
     </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin: 10px 5px 0;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .intro {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .intro h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .intro p {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .feature h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .feature p {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .viewers {
+            margin-top: 40px;
+        }
+
+        .viewers h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .viewer-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .viewer-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: block;
+        }
+
+        .viewer-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .viewer-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .viewer-card p {
+            opacity: 0.95;
+            margin-bottom: 15px;
+        }
+
+        .viewer-card .cta {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .viewer-card:hover .cta {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .download-section {
+            margin-top: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .download-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .download-btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #5568d3;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .viewer-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MinIO Enterprise API</h1>
+            <p>Ultra-High-Performance Object Storage</p>
+            <div>
+                <span class="badge">v3.0.0</span>
+                <span class="badge">OpenAPI 3.0</span>
+                <span class="badge">100x Performance</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="intro">
+                <h2>Welcome to MinIO Enterprise API Documentation</h2>
+                <p>
+                    MinIO Enterprise delivers enterprise-grade object storage with unprecedented performance.
+                    Our API provides comprehensive access to all features including object storage, caching,
+                    replication, and multi-tenant management.
+                </p>
+            </div>
+
+            <div class="features">
+                <div class="feature">
+                    <h3>🚀 Ultra-Fast</h3>
+                    <p>500K cache writes/sec, 2M reads/sec with 256-way sharding</p>
+                </div>
+                <div class="feature">
+                    <h3>🔒 Secure</h3>
+                    <p>Multi-tenant isolation, quota management, and full audit logging</p>
+                </div>
+                <div class="feature">
+                    <h3>📊 Observable</h3>
+                    <p>Prometheus metrics, Jaeger tracing, and comprehensive health checks</p>
+                </div>
+                <div class="feature">
+                    <h3>⚡ Scalable</h3>
+                    <p>Dynamic worker pools (4-128 workers) and HTTP/2 connection pooling</p>
+                </div>
+            </div>
+
+            <div class="viewers">
+                <h2>Choose Your API Documentation Viewer</h2>
+                <div class="viewer-cards">
+                    <a href="swagger.html" class="viewer-card">
+                        <h3>Swagger UI</h3>
+                        <p>Interactive API explorer with "Try it out" functionality. Perfect for testing endpoints directly from your browser.</p>
+                        <span class="cta">Open Swagger UI →</span>
+                    </a>
+                    <a href="redoc.html" class="viewer-card">
+                        <h3>Redoc</h3>
+                        <p>Clean, modern documentation with responsive three-panel design. Ideal for reading and understanding the API.</p>
+                        <span class="cta">Open Redoc →</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="download-section">
+                <h3>Download OpenAPI Specification</h3>
+                <a href="openapi.yaml" download class="download-btn">Download openapi.yaml</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                MinIO Enterprise v3.0.0 |
+                <a href="../../README.md">Documentation</a> |
+                <a href="https://github.com/abiolaogu/MinIO">GitHub Repository</a> |
+                Licensed under Apache 2.0
+            </p>
+        </div>
+    </div>
 </body>
 </html>
