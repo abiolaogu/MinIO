@@ -1,0 +1,44 @@
+apiVersion: 1
+
+datasources:
+  # Prometheus Data Source
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s
+      queryTimeout: 60s
+    version: 1
+
+  # Loki Data Source
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: true
+    jsonData:
+      maxLines: 1000
+      timeout: 60
+      derivedFields:
+        # Derive trace IDs from logs for Jaeger integration
+        - datasourceUid: jaeger
+          matcherRegex: "trace_id=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+      alertmanagerUid: alertmanager
+    version: 1
+
+  # AlertManager Data Source
+  - name: AlertManager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    isDefault: false
+    editable: true
+    jsonData:
+      implementation: prometheus
+    version: 1

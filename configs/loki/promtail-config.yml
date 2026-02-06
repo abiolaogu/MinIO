@@ -1,0 +1,299 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 1048576
+    timeout: 10s
+
+scrape_configs:
+  # ============================================================
+  # MinIO Application Logs
+  # ============================================================
+  - job_name: minio
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["minio1", "minio2", "minio3", "minio4"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+    pipeline_stages:
+      - docker: {}
+      - json:
+          expressions:
+            level: level
+            timestamp: time
+            message: msg
+            component: component
+            error: error
+      - labels:
+          level:
+          component:
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+      - output:
+          source: message
+
+  # ============================================================
+  # HAProxy Logs
+  # ============================================================
+  - job_name: haproxy
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["haproxy"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^(?P<client_ip>[\w\.]+):(?P<client_port>\d+) \[(?P<timestamp>[^\]]+)\] (?P<frontend>\S+) (?P<backend>\S+)/(?P<server>\S+) (?P<tq>-?\d+)/(?P<tw>-?\d+)/(?P<tc>-?\d+)/(?P<tr>-?\d+)/(?P<tt>\d+) (?P<status_code>\d+) (?P<bytes_read>\d+)'
+      - labels:
+          frontend:
+          backend:
+          server:
+          status_code:
+      - timestamp:
+          source: timestamp
+          format: 02/Jan/2006:15:04:05.000
+
+  # ============================================================
+  # PostgreSQL Logs
+  # ============================================================
+  - job_name: postgres
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["postgres"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \w+) \[(?P<pid>\d+)\] (?P<level>\w+):\s+(?P<message>.*)'
+      - labels:
+          level:
+      - timestamp:
+          source: timestamp
+          format: 2006-01-02 15:04:05.000 MST
+
+  # ============================================================
+  # Redis Logs
+  # ============================================================
+  - job_name: redis
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["redis"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^(?P<pid>\d+):(?P<role>\w+) (?P<timestamp>[^*]+) \* (?P<message>.*)'
+      - labels:
+          role:
+      - timestamp:
+          source: timestamp
+          format: 02 Jan 2006 15:04:05.000
+
+  # ============================================================
+  # Prometheus Logs
+  # ============================================================
+  - job_name: prometheus
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["prometheus"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^level=(?P<level>\w+) ts=(?P<timestamp>[^\s]+) caller=(?P<caller>[^\s]+) (?P<message>.*)'
+      - labels:
+          level:
+          caller:
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+
+  # ============================================================
+  # Grafana Logs
+  # ============================================================
+  - job_name: grafana
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["grafana"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - json:
+          expressions:
+            level: lvl
+            timestamp: t
+            message: msg
+            logger: logger
+      - labels:
+          level:
+          logger:
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+
+  # ============================================================
+  # AlertManager Logs
+  # ============================================================
+  - job_name: alertmanager
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["alertmanager"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^level=(?P<level>\w+) ts=(?P<timestamp>[^\s]+) caller=(?P<caller>[^\s]+) component=(?P<component>[^\s]+) (?P<message>.*)'
+      - labels:
+          level:
+          component:
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+
+  # ============================================================
+  # Jaeger Logs
+  # ============================================================
+  - job_name: jaeger
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["jaeger"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - json:
+          expressions:
+            level: level
+            timestamp: ts
+            message: msg
+      - labels:
+          level:
+      - timestamp:
+          source: timestamp
+          format: UnixMs
+
+  # ============================================================
+  # NATS Logs
+  # ============================================================
+  - job_name: nats
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ["nats"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          expression: '^\[(?P<pid>\d+)\] (?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\.\d+) \[(?P<level>\w+)\] (?P<message>.*)'
+      - labels:
+          level:
+      - timestamp:
+          source: timestamp
+          format: 2006/01/02 15:04:05.000000
+
+  # ============================================================
+  # System Logs (if mounted)
+  # ============================================================
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: docker-host
+          __path__: /var/log/*.log
+    pipeline_stages:
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}'
+          max_wait_time: 3s
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (?P<level>\w+) (?P<message>.*)'
+      - labels:
+          level:
+      - timestamp:
+          source: timestamp
+          format: 2006-01-02 15:04:05
+
+# Limit configuration
+limits_config:
+  readline_rate: 10000
+  readline_burst: 20000
