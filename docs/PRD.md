@@ -4,7 +4,7 @@
 **Version**: 2.1.0
 **Date**: 2026-02-05
 **Status**: Active Development
-**Last Updated**: 2026-02-06 (Sprint: Alert Rules Configuration Completed)
+**Last Updated**: 2026-02-06 (Sprint: Log Aggregation Setup Completed)
 
 ---
 
@@ -77,7 +77,7 @@ MinIO Enterprise is an ultra-high-performance object storage system achieving 10
 - [x] CI/CD pipeline
 
 ### Phase 2: Production Readiness Enhancement (CURRENT)
-**Status**: 40% Complete (4/10 tasks)
+**Status**: 50% Complete (5/10 tasks)
 **Target Date**: 2026-Q1
 **Priority**: HIGH
 
@@ -92,7 +92,7 @@ MinIO Enterprise is an ultra-high-performance object storage system achieving 10
 #### 2.2 Monitoring & Observability Enhancement
 - [x] Custom Grafana dashboards (performance, security, operations) ✅ COMPLETED (2026-02-06)
 - [x] Alert rules configuration (Prometheus AlertManager) ✅ COMPLETED (2026-02-06)
-- [ ] Log aggregation setup (ELK or Loki)
+- [x] Log aggregation setup (ELK or Loki) ✅ COMPLETED (2026-02-06)
 - [ ] Distributed tracing examples (Jaeger)
 - [ ] APM integration guide
 - [ ] SLO/SLI definitions
@@ -258,40 +258,97 @@ Enhance production readiness through comprehensive API documentation and operati
 - [x] Comprehensive documentation for alert management
 - [x] PRD updated with task completion
 
-### Recommended Next Task: Log Aggregation Setup (ELK or Loki)
-**Priority**: HIGH
+#### Task 5: Log Aggregation Setup (Grafana Loki) ✅ COMPLETED (2026-02-06)
+- Created Loki configuration file (`/configs/loki/loki-config.yml`)
+  - Storage backend configured with TSDB shipper and filesystem
+  - Retention policy set to 31 days (744 hours)
+  - Query optimization with embedded caching (100 MB cache)
+  - Compaction enabled with 10-minute intervals
+  - Ingestion limits: 10 MB/s rate, 20 MB burst
+  - WAL (Write-Ahead Log) enabled for data durability
+- Created Promtail configuration file (`/configs/loki/promtail-config.yml`)
+  - Configured log collection from all Docker containers
+  - Custom pipelines for 10 services: MinIO (4 nodes), HAProxy, PostgreSQL, Redis, Prometheus, Grafana, AlertManager, Jaeger, NATS
+  - Log parsing with regex and JSON extraction
+  - Label extraction for filterable metadata (level, component, service, container)
+  - System log collection from /var/log
+- Updated Docker Compose configuration (`/deployments/docker/docker-compose.production.yml`)
+  - Added Loki service with health checks and resource limits (2 GB memory, 2 CPUs)
+  - Added Promtail service with Docker socket access for log collection
+  - Added loki-data and promtail-data volumes
+  - Configured Grafana to depend on Loki
+  - Enabled log context features in Grafana
+- Created Grafana datasource configuration (`/configs/grafana/datasources/datasources.yml`)
+  - Loki datasource with derived fields for trace correlation
+  - Prometheus datasource configuration
+  - AlertManager datasource configuration
+  - Auto-provisioning enabled
+- Created log analysis dashboard (`/configs/grafana/dashboards/logs-dashboard.json`)
+  - Real-time log stream viewer with filters
+  - Log volume metrics by level and container
+  - Error tracking with rates and counts
+  - Dashboard variables for service, container, and log level filtering
+  - Pre-configured queries for common use cases
+- Created comprehensive documentation (`/configs/loki/README.md`)
+  - Architecture overview and component descriptions
+  - Quick start deployment guide
+  - Configuration reference for Loki and Promtail
+  - Log source documentation for all 10 services
+  - LogQL query examples (basic, advanced, metrics)
+  - Dashboard creation guide
+  - Alerting on logs setup
+  - Retention policy management
+  - Performance tuning recommendations
+  - Troubleshooting guide with common issues and solutions
+  - Best practices for labels, log format, queries, security
+  - Resource links and support information
+
+#### Acceptance Criteria Met
+- [x] Log aggregation solution deployed (Grafana Loki)
+- [x] MinIO cluster logs forwarded to aggregation system (Promtail configured)
+- [x] Log parsing and indexing configured (10 service pipelines)
+- [x] Log retention policies configured (31 days retention)
+- [x] Search and filter capabilities functional (LogQL queries)
+- [x] Log dashboard created for common queries (logs-dashboard.json)
+- [x] Documentation for log analysis (comprehensive README)
+- [x] Grafana datasource provisioning configured
+- [x] Docker Compose production deployment updated
+- [x] PRD updated with task completion
+
+### Recommended Next Task: Distributed Tracing Examples (Jaeger)
+**Priority**: MEDIUM
 **Status**: 🔴 NOT STARTED
-**Target Date**: 2026-02-08
+**Target Date**: 2026-02-10
 **Assignee**: TBD
 
 #### Task Description
-Implement centralized log aggregation using either the ELK stack (Elasticsearch, Logstash, Kibana) or Grafana Loki. This will provide unified log viewing, searching, and analysis capabilities across the MinIO cluster.
+Create comprehensive distributed tracing examples using Jaeger that demonstrate how to trace requests across the MinIO cluster. Implement trace instrumentation in key components and create example queries to help users understand system behavior and performance bottlenecks.
 
 #### Acceptance Criteria
-- [ ] Log aggregation solution deployed (ELK or Loki)
-- [ ] MinIO cluster logs forwarded to aggregation system
-- [ ] Log parsing and indexing configured
-- [ ] Log retention policies configured
-- [ ] Search and filter capabilities functional
-- [ ] Log dashboard created for common queries
-- [ ] Documentation for log analysis
+- [ ] Trace instrumentation added to MinIO service code
+- [ ] Example traces documented for common operations (PUT, GET, DELETE, LIST)
+- [ ] Trace context propagation configured across services
+- [ ] Jaeger UI access guide created
+- [ ] Example trace queries documented
+- [ ] Integration with Loki logs via trace correlation
+- [ ] Performance impact analysis documented
 
 #### Technical Details
-- **Option 1**: ELK Stack (Elasticsearch, Logstash, Kibana)
-- **Option 2**: Grafana Loki (lightweight alternative)
-- **Location**: `/deployments/docker/` (Docker Compose update)
-- **Integration**: Collect logs from all MinIO nodes, monitoring services
+- **Service**: Jaeger (already deployed)
+- **Location**: `/internal/` (code instrumentation), `/docs/guides/` (documentation)
+- **Integration**: OpenTelemetry or Jaeger client libraries
+- **Trace Correlation**: Link traces with logs using trace IDs
 
 #### Dependencies
-- AlertManager deployed (✅ Task 4)
+- Jaeger deployed (✅ existing)
+- Loki deployed (✅ Task 5)
 - Grafana deployed (✅ existing)
-- Prometheus deployed (✅ existing)
 
 #### Success Metrics
-- Logs from all services centrally accessible
-- Fast log search (sub-second for recent logs)
-- Retention policy operational (30+ days)
-- Dashboard created with common log queries
+- Traces visible in Jaeger UI for all operations
+- End-to-end latency breakdown available
+- Trace-to-log correlation functional
+- Documentation with 5+ example traces
 
 ---
 
@@ -299,10 +356,10 @@ Implement centralized log aggregation using either the ELK stack (Elasticsearch,
 
 ### High Priority
 1. ~~**Missing API Documentation**: No formal API specification (OpenAPI/Swagger)~~ ✅ RESOLVED (2026-02-05)
-2. **Limited SDK Support**: No official client libraries for common languages (NEXT TASK)
-2. **Limited SDK Support**: No official client libraries for common languages
+2. **Limited SDK Support**: No official client libraries for common languages (NEXT PRIORITY)
 3. ~~**Monitoring Gaps**: Basic Prometheus metrics but no custom dashboards~~ ✅ RESOLVED (2026-02-06)
-4. **Backup/Restore**: Manual processes, need automation
+4. ~~**Log Aggregation**: No centralized log collection and analysis~~ ✅ RESOLVED (2026-02-06)
+5. **Backup/Restore**: Manual processes, need automation
 
 ### Medium Priority
 1. **Test Coverage Metrics**: Tests pass 100% but no coverage percentage measured
@@ -325,8 +382,10 @@ Implement centralized log aggregation using either the ELK stack (Elasticsearch,
 - **NATS**: Message broker for async operations
 - **HAProxy**: Load balancing
 - **Prometheus**: Metrics collection
-- **Grafana**: Visualization
+- **Grafana**: Visualization and dashboards
 - **Jaeger**: Distributed tracing
+- **Loki**: Log aggregation and querying
+- **Promtail**: Log collection and forwarding
 
 ### Integration Points
 - S3-compatible API (standard MinIO interface)
@@ -502,6 +561,7 @@ Implement centralized log aggregation using either the ELK stack (Elasticsearch,
 | 2026-02-05 | 1.2 | Completed: Interactive API documentation portal (Swagger UI, Redoc, landing page) | Claude Code Agent |
 | 2026-02-06 | 1.3 | Completed: Custom Grafana dashboards (Performance, Security, Operations) with 8 alert rules and comprehensive documentation | Claude Code Agent |
 | 2026-02-06 | 1.4 | Completed: Alert Rules Configuration (Prometheus AlertManager) with 15 alert rules, routing configuration, notification channels, and comprehensive documentation | Claude Code Agent |
+| 2026-02-06 | 1.5 | Completed: Log Aggregation Setup (Grafana Loki) with Promtail log collection from 10 services, log analysis dashboard, Grafana datasource provisioning, and comprehensive documentation | Claude Code Agent |
 
 ---
 
