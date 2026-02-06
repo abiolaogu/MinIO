@@ -306,8 +306,8 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../../configs/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../../configs/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     depends_on:
       - prometheus
     healthcheck:
