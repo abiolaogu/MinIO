@@ -1,0 +1,105 @@
+# MinIO Enterprise - Restore Configuration
+# Copy this file to restore.conf and customize for your environment
+
+# Backup Root Directory (where backups are stored)
+BACKUP_ROOT="/var/backups/minio"
+
+# Backup to Restore
+# Options: "latest", specific date (YYYYMMDD_HHMMSS), or full path
+BACKUP_TO_RESTORE="latest"
+
+# Verify Restore (true/false)
+VERIFY_RESTORE=true
+
+# Create Rollback Point (true/false)
+# Creates a backup of current state before restore
+CREATE_ROLLBACK=true
+
+# Rollback Directory
+ROLLBACK_DIR="/var/backups/minio/rollback_$(date +%Y%m%d_%H%M%S)"
+
+# Log File
+LOG_FILE="/var/backups/minio/restore.log"
+
+# Encryption Key (required if backup is encrypted)
+# Must match the encryption key used during backup
+ENCRYPTION_KEY=""
+
+# ============================================
+# Component Restore Flags
+# ============================================
+
+# Restore MinIO data (true/false)
+RESTORE_MINIO=true
+
+# Restore PostgreSQL database (true/false)
+RESTORE_POSTGRES=true
+
+# Restore Redis snapshots (true/false)
+RESTORE_REDIS=true
+
+# Restore configuration files (true/false)
+RESTORE_CONFIG=true
+
+# ============================================
+# Service Control
+# ============================================
+
+# Stop services before restore (true/false)
+STOP_SERVICES=true
+
+# Start services after restore (true/false)
+START_SERVICES=true
+
+# ============================================
+# MinIO Configuration
+# ============================================
+
+# MinIO Data Directory
+MINIO_DATA_DIR="/var/lib/minio/data"
+
+# ============================================
+# PostgreSQL Configuration
+# ============================================
+
+# PostgreSQL Host
+POSTGRES_HOST="localhost"
+
+# PostgreSQL Port
+POSTGRES_PORT="5432"
+
+# PostgreSQL Database Name
+POSTGRES_DB="minio"
+
+# PostgreSQL User
+POSTGRES_USER="postgres"
+
+# PostgreSQL Password
+POSTGRES_PASSWORD=""
+
+# ============================================
+# Redis Configuration
+# ============================================
+
+# Redis Host
+REDIS_HOST="localhost"
+
+# Redis Port
+REDIS_PORT="6379"
+
+# Redis Password (if authentication is enabled)
+REDIS_PASSWORD=""
+
+# Redis Data Directory (where dump.rdb is stored)
+REDIS_DATA_DIR="/var/lib/redis"
+
+# ============================================
+# Advanced Options
+# ============================================
+
+# Restore from Remote Storage (future feature)
+# REMOTE_RESTORE=false
+# REMOTE_STORAGE_TYPE="s3"  # s3, azure, gcs
+# REMOTE_BUCKET=""
+# REMOTE_ACCESS_KEY=""
+# REMOTE_SECRET_KEY=""

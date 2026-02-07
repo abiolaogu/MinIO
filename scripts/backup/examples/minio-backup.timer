@@ -1,0 +1,20 @@
+[Unit]
+Description=MinIO Enterprise Backup Timer
+Documentation=https://github.com/abiolaogu/MinIO
+Requires=minio-backup.service
+
+[Timer]
+# Run backup every 6 hours
+OnCalendar=00/6:00:00
+
+# Run backup 10 minutes after boot if missed
+OnBootSec=10min
+
+# Ensure backup runs even if system was off
+Persistent=true
+
+# Randomize start time by up to 5 minutes to avoid load spikes
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,72 @@
+# MinIO Enterprise - Backup Cron Examples
+# Add these entries to your crontab with: crontab -e
+
+# ============================================
+# Production Backups (every 6 hours)
+# ============================================
+0 */6 * * * cd /opt/MinIO && ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Daily Backup (at 2 AM)
+# ============================================
+0 2 * * * cd /opt/MinIO && ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Hourly Backup (on the hour)
+# ============================================
+0 * * * * cd /opt/MinIO && ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Weekly Backup (Sunday at 3 AM)
+# ============================================
+0 3 * * 0 cd /opt/MinIO && ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Business Hours Only (Mon-Fri, every 3 hours, 9am-6pm)
+# ============================================
+0 9,12,15,18 * * 1-5 cd /opt/MinIO && ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Off-Hours Backup (Weekdays at 11 PM)
+# ============================================
+0 23 * * 1-5 cd /opt/MinIO && ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Encrypted Backup (Daily at 3 AM)
+# ============================================
+0 3 * * * cd /opt/MinIO && ENCRYPTION=true ENCRYPTION_KEY="$(cat /secure/backup-key.txt)" ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# PostgreSQL Only Backup (Every 2 hours)
+# ============================================
+0 */2 * * * cd /opt/MinIO && BACKUP_MINIO=false BACKUP_REDIS=false BACKUP_CONFIG=false ./scripts/backup/backup.sh >> /var/backups/minio/cron.log 2>&1
+
+# ============================================
+# Cleanup Old Backups (Monthly, first day at 4 AM)
+# ============================================
+0 4 1 * * find /var/backups/minio/ -maxdepth 1 -type d -mtime +30 -exec rm -rf {} \; >> /var/backups/minio/cleanup.log 2>&1
+
+# ============================================
+# Monitor Backup Success (Check every hour)
+# ============================================
+30 * * * * test -f /var/backups/minio/backup.log && tail -n 1 /var/backups/minio/backup.log | grep -q "SUCCESS" || echo "Backup may have failed - check logs" | mail -s "MinIO Backup Alert" admin@example.com
+
+# ============================================
+# Disk Space Alert (Check daily at 1 AM)
+# ============================================
+0 1 * * * df -h /var/backups/minio | awk 'NR==2 {if (substr($5,1,length($5)-1) > 80) print "WARNING: Backup disk usage is " $5}' | mail -s "MinIO Backup Disk Alert" admin@example.com
+
+# ============================================
+# Remote Backup Copy (Daily at 4 AM)
+# ============================================
+# 0 4 * * * rsync -avz --delete /var/backups/minio/ backup-server:/remote/backups/minio/ >> /var/backups/minio/rsync.log 2>&1
+
+# ============================================
+# Notes:
+# ============================================
+# - Adjust paths to match your installation
+# - Replace /opt/MinIO with your actual path
+# - Configure email alerts with your email address
+# - Test each cron job manually before adding
+# - Review logs regularly: tail -f /var/backups/minio/cron.log
+# - Monitor disk space: df -h /var/backups/minio

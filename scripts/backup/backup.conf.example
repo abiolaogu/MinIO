@@ -1,0 +1,110 @@
+# MinIO Enterprise - Backup Configuration
+# Copy this file to backup.conf and customize for your environment
+
+# Backup Type: full or incremental
+BACKUP_TYPE="full"
+
+# Backup Root Directory
+BACKUP_ROOT="/var/backups/minio"
+
+# Retention Policy (days)
+RETENTION_DAYS=30
+
+# Compression (true/false)
+COMPRESSION=true
+
+# Encryption (true/false)
+ENCRYPTION=false
+
+# Encryption Key (required if ENCRYPTION=true)
+# Use a strong password or key
+# Example: ENCRYPTION_KEY="your-strong-encryption-password-here"
+ENCRYPTION_KEY=""
+
+# Verify Backup (true/false)
+VERIFY_BACKUP=true
+
+# Log File
+LOG_FILE="/var/backups/minio/backup.log"
+
+# ============================================
+# Component Backup Flags
+# ============================================
+
+# Backup MinIO data (true/false)
+BACKUP_MINIO=true
+
+# Backup PostgreSQL database (true/false)
+BACKUP_POSTGRES=true
+
+# Backup Redis snapshots (true/false)
+BACKUP_REDIS=true
+
+# Backup configuration files (true/false)
+BACKUP_CONFIG=true
+
+# ============================================
+# MinIO Configuration
+# ============================================
+
+# MinIO Data Directory
+MINIO_DATA_DIR="/var/lib/minio/data"
+
+# MinIO API Endpoint
+MINIO_ENDPOINT="http://localhost:9000"
+
+# MinIO Access Credentials (optional, for advanced backup methods)
+MINIO_ACCESS_KEY=""
+MINIO_SECRET_KEY=""
+
+# ============================================
+# PostgreSQL Configuration
+# ============================================
+
+# PostgreSQL Host
+POSTGRES_HOST="localhost"
+
+# PostgreSQL Port
+POSTGRES_PORT="5432"
+
+# PostgreSQL Database Name
+POSTGRES_DB="minio"
+
+# PostgreSQL User
+POSTGRES_USER="postgres"
+
+# PostgreSQL Password
+POSTGRES_PASSWORD=""
+
+# ============================================
+# Redis Configuration
+# ============================================
+
+# Redis Host
+REDIS_HOST="localhost"
+
+# Redis Port
+REDIS_PORT="6379"
+
+# Redis Password (if authentication is enabled)
+REDIS_PASSWORD=""
+
+# Redis Data Directory (where dump.rdb is stored)
+REDIS_DATA_DIR="/var/lib/redis"
+
+# ============================================
+# Advanced Options
+# ============================================
+
+# Backup to Remote Storage (future feature)
+# REMOTE_BACKUP=false
+# REMOTE_STORAGE_TYPE="s3"  # s3, azure, gcs
+# REMOTE_BUCKET=""
+# REMOTE_ACCESS_KEY=""
+# REMOTE_SECRET_KEY=""
+
+# Notification Options (future feature)
+# NOTIFY_ON_SUCCESS=false
+# NOTIFY_ON_FAILURE=true
+# NOTIFICATION_EMAIL=""
+# NOTIFICATION_SLACK_WEBHOOK=""
