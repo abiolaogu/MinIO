@@ -1,0 +1,24 @@
+# MinIO Enterprise Backup Cron Schedule
+#
+# Installation:
+#   sudo cp minio-backup.cron /etc/cron.d/minio-backup
+#   sudo chmod 0644 /etc/cron.d/minio-backup
+#
+# Or add to user crontab:
+#   crontab -e
+#   (then paste the lines below)
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+BACKUP_SCRIPT=/opt/minio-enterprise/scripts/backup/backup.sh
+BACKUP_DESTINATION=/backup/minio
+MAILTO=admin@example.com
+
+# Full backup: Daily at 2:00 AM
+0 2 * * * root $BACKUP_SCRIPT full $BACKUP_DESTINATION >> /var/log/minio-backup-full.log 2>&1
+
+# Incremental backup: Every 6 hours
+0 */6 * * * root $BACKUP_SCRIPT incremental $BACKUP_DESTINATION >> /var/log/minio-backup-incremental.log 2>&1
+
+# Cleanup old logs: Weekly on Sunday at 3:00 AM
+0 3 * * 0 root find /var/log -name "minio-backup-*.log" -mtime +90 -delete

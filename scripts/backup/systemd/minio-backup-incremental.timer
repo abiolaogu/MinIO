@@ -1,0 +1,12 @@
+[Unit]
+Description=MinIO Enterprise Incremental Backup Timer
+Requires=minio-backup-incremental.service
+
+[Timer]
+# Run every 6 hours
+OnCalendar=00/6:00:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=MinIO Enterprise Full Backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/minio-enterprise
+EnvironmentFile=/opt/minio-enterprise/scripts/backup/backup-config.env
+ExecStart=/opt/minio-enterprise/scripts/backup/backup.sh full ${BACKUP_DESTINATION}
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=minio-backup-full
+
+# Restart policy
+Restart=on-failure
+RestartSec=5m
+
+[Install]
+WantedBy=multi-user.target

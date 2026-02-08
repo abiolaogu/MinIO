@@ -1,0 +1,13 @@
+[Unit]
+Description=MinIO Enterprise Full Backup Timer
+Requires=minio-backup-full.service
+
+[Timer]
+# Run daily at 2:00 AM
+OnCalendar=daily
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
