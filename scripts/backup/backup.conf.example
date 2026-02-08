@@ -1,0 +1,115 @@
+# MinIO Enterprise - Backup Configuration
+#
+# Copy this file to backup.conf and customize for your environment.
+#
+
+# ==============================
+# Backup Settings
+# ==============================
+
+# Backup root directory (where backups will be stored)
+BACKUP_ROOT="/var/backups/minio"
+
+# Backup type: full or incremental
+BACKUP_TYPE="full"
+
+# Retention period in days (backups older than this will be deleted)
+RETENTION_DAYS=30
+
+# Enable compression (recommended)
+ENABLE_COMPRESSION=true
+
+# Enable encryption (highly recommended for production)
+ENABLE_ENCRYPTION=true
+
+# Path to encryption key file (generate with: openssl rand -base64 32 > backup.key)
+ENCRYPTION_KEY_FILE="/home/runner/work/MinIO/MinIO/scripts/backup/backup.key"
+
+# ==============================
+# PostgreSQL Settings
+# ==============================
+
+POSTGRES_HOST="localhost"
+POSTGRES_PORT="5432"
+POSTGRES_DB="minio"
+POSTGRES_USER="minio"
+POSTGRES_PASSWORD="minio"
+
+# ==============================
+# Redis Settings
+# ==============================
+
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+REDIS_PASSWORD=""
+
+# Path to Redis RDB file (adjust based on your Redis configuration)
+REDIS_RDB_PATH="/data/redis/dump.rdb"
+
+# ==============================
+# MinIO Settings
+# ==============================
+
+MINIO_ENDPOINT="http://localhost:9000"
+MINIO_ACCESS_KEY="minioadmin"
+MINIO_SECRET_KEY="minioadmin"
+
+# ==============================
+# S3 Upload Settings (Optional)
+# ==============================
+
+# Enable upload to S3-compatible storage
+S3_UPLOAD=false
+
+# S3 bucket for backup storage
+S3_BACKUP_BUCKET=""
+
+# S3 prefix (folder) for backups
+S3_BACKUP_PREFIX="minio-backups"
+
+# AWS credentials (if not using instance profile)
+# export AWS_ACCESS_KEY_ID=""
+# export AWS_SECRET_ACCESS_KEY=""
+# export AWS_DEFAULT_REGION="us-east-1"
+
+# ==============================
+# Restore Settings
+# ==============================
+
+# Enable verification after restore
+ENABLE_VERIFICATION=true
+
+# Enable automatic rollback snapshot creation
+ENABLE_ROLLBACK=true
+
+# Dry run mode (test without making changes)
+DRY_RUN=false
+
+# ==============================
+# Advanced Settings
+# ==============================
+
+# Backup notification email (optional)
+BACKUP_NOTIFICATION_EMAIL=""
+
+# Slack webhook for notifications (optional)
+SLACK_WEBHOOK_URL=""
+
+# Maximum backup file size before splitting (in GB, 0 = no limit)
+MAX_BACKUP_SIZE=0
+
+# Parallel backup jobs (for faster backups on multi-core systems)
+PARALLEL_JOBS=1
+
+# ==============================
+# Scheduling (Cron Examples)
+# ==============================
+
+# Daily full backup at 2 AM:
+# 0 2 * * * /path/to/scripts/backup/backup.sh
+
+# Hourly incremental backup (if supported):
+# 0 * * * * BACKUP_TYPE=incremental /path/to/scripts/backup/backup.sh
+
+# Weekly backup with S3 upload:
+# 0 3 * * 0 S3_UPLOAD=true /path/to/scripts/backup/backup.sh
