@@ -1,0 +1,90 @@
+# MinIO Enterprise Restore Configuration
+# Copy this file to restore.conf and customize for your environment
+
+# ============================================
+# PostgreSQL Configuration
+# ============================================
+PG_HOST="localhost"
+PG_PORT="5432"
+PG_DATABASE="minio"
+PG_USER="minio"
+# Password should be set via environment variable: export PGPASSWORD="your_password"
+PG_PASSWORD="${PGPASSWORD:-}"
+
+# ============================================
+# Redis Configuration
+# ============================================
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+# Password should be set via environment variable: export REDIS_PASSWORD="your_password"
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+
+# ============================================
+# MinIO Data Directory
+# ============================================
+# Path to MinIO data directory
+MINIO_DATA_DIR="/var/lib/minio/data"
+
+# ============================================
+# Pre-Restore Backup
+# ============================================
+# Create a backup before restoring (highly recommended)
+CREATE_PRE_RESTORE_BACKUP=true
+
+# Directory to store pre-restore backup
+PRE_RESTORE_BACKUP_DIR="/var/backups/minio/pre-restore"
+
+# ============================================
+# Service Management
+# ============================================
+# Automatically restart services after restore
+RESTART_SERVICES=true
+
+# MinIO service name (systemd) or Docker container names
+MINIO_SERVICE_NAME="minio"
+
+# ============================================
+# Docker Configuration (if using Docker)
+# ============================================
+# Docker compose file location
+DOCKER_COMPOSE_FILE="/home/runner/work/MinIO/MinIO/deployments/docker/docker-compose.production.yml"
+
+# Docker project name
+DOCKER_PROJECT_NAME="minio-enterprise"
+
+# ============================================
+# Advanced Settings
+# ============================================
+# Automatically verify restore after completion
+ALWAYS_VERIFY=true
+
+# Stop timeout (seconds to wait for services to stop)
+STOP_TIMEOUT=30
+
+# Start timeout (seconds to wait for services to start)
+START_TIMEOUT=60
+
+# ============================================
+# Example Configurations
+# ============================================
+
+# Example 1: Standard restore with automatic service restart
+# PG_HOST="localhost"
+# REDIS_HOST="localhost"
+# MINIO_DATA_DIR="/var/lib/minio/data"
+# CREATE_PRE_RESTORE_BACKUP=true
+# RESTART_SERVICES=true
+
+# Example 2: Restore to different database (testing/staging)
+# PG_HOST="staging-db.example.com"
+# PG_DATABASE="minio_staging"
+# REDIS_HOST="staging-redis.example.com"
+# MINIO_DATA_DIR="/var/lib/minio-staging/data"
+# RESTART_SERVICES=false
+
+# Example 3: Manual restore without service management
+# PG_HOST="localhost"
+# REDIS_HOST="localhost"
+# MINIO_DATA_DIR="/var/lib/minio/data"
+# CREATE_PRE_RESTORE_BACKUP=false
+# RESTART_SERVICES=false

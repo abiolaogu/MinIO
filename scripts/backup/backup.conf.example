@@ -1,0 +1,128 @@
+# MinIO Enterprise Backup Configuration
+# Copy this file to backup.conf and customize for your environment
+
+# ============================================
+# Backup Destination
+# ============================================
+# Local directory where backups will be stored
+BACKUP_DESTINATION="/var/backups/minio"
+
+# ============================================
+# Retention Policy
+# ============================================
+# Number of days to keep backups (older backups will be automatically deleted)
+RETENTION_DAYS=30
+
+# ============================================
+# PostgreSQL Configuration
+# ============================================
+PG_HOST="localhost"
+PG_PORT="5432"
+PG_DATABASE="minio"
+PG_USER="minio"
+# Password should be set via environment variable: export PGPASSWORD="your_password"
+PG_PASSWORD="${PGPASSWORD:-}"
+
+# ============================================
+# Redis Configuration
+# ============================================
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+# Password should be set via environment variable: export REDIS_PASSWORD="your_password"
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+
+# ============================================
+# MinIO Data Directory
+# ============================================
+# Path to MinIO data directory
+MINIO_DATA_DIR="/var/lib/minio/data"
+
+# ============================================
+# Compression Settings
+# ============================================
+# Compression algorithm to use: gzip, bzip2, xz, none
+# - gzip: Fast compression, good balance (recommended)
+# - bzip2: Better compression, slower
+# - xz: Best compression, slowest
+# - none: No compression (fastest)
+COMPRESSION="gzip"
+
+# ============================================
+# Encryption Settings
+# ============================================
+# Path to GPG public key file for encryption (when using -e flag)
+# Generate a key with: gpg --full-generate-key
+# Export public key with: gpg --export --armor your-email@example.com > backup-key.asc
+ENCRYPTION_KEY_FILE=""
+
+# ============================================
+# S3-Compatible Backup Storage (Optional)
+# ============================================
+# Enable remote backup to S3-compatible storage
+S3_BACKUP_ENABLED=false
+
+# S3 endpoint (e.g., https://s3.amazonaws.com or https://minio.example.com)
+S3_ENDPOINT=""
+
+# S3 bucket name for backups
+S3_BUCKET=""
+
+# S3 credentials
+S3_ACCESS_KEY=""
+S3_SECRET_KEY=""
+
+# ============================================
+# Notification Settings (Optional)
+# ============================================
+# Email address to receive backup notifications
+NOTIFICATION_EMAIL=""
+
+# Webhook URL for backup notifications (e.g., Slack, Discord, custom endpoint)
+# Example Slack webhook format:
+# NOTIFICATION_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+NOTIFICATION_WEBHOOK=""
+
+# ============================================
+# Advanced Settings
+# ============================================
+# Maximum age of incremental backups before forcing a full backup (days)
+MAX_INCREMENTAL_AGE=7
+
+# Maximum number of full backups to keep (0 = unlimited)
+MAX_FULL_BACKUPS=10
+
+# Backup verification (always verify after backup)
+ALWAYS_VERIFY=true
+
+# ============================================
+# Docker Configuration (if using Docker)
+# ============================================
+# Docker container names or compose project
+DOCKER_COMPOSE_FILE="/home/runner/work/MinIO/MinIO/deployments/docker/docker-compose.production.yml"
+DOCKER_PROJECT_NAME="minio-enterprise"
+
+# ============================================
+# Example Configurations
+# ============================================
+
+# Example 1: Local backup with email notifications
+# BACKUP_DESTINATION="/mnt/backups/minio"
+# RETENTION_DAYS=30
+# COMPRESSION="gzip"
+# NOTIFICATION_EMAIL="admin@example.com"
+
+# Example 2: Encrypted backup to S3
+# BACKUP_DESTINATION="/var/backups/minio"
+# RETENTION_DAYS=90
+# COMPRESSION="xz"
+# ENCRYPTION_KEY_FILE="/etc/minio/backup-key.asc"
+# S3_BACKUP_ENABLED=true
+# S3_ENDPOINT="https://s3.amazonaws.com"
+# S3_BUCKET="minio-backups"
+# S3_ACCESS_KEY="AKIAIOSFODNN7EXAMPLE"
+# S3_SECRET_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+# Example 3: Fast local backup without compression
+# BACKUP_DESTINATION="/fast-storage/minio-backups"
+# RETENTION_DAYS=7
+# COMPRESSION="none"
