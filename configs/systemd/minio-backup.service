@@ -1,0 +1,40 @@
+[Unit]
+Description=MinIO Enterprise Automated Backup
+Documentation=https://github.com/abiolaogu/MinIO/blob/main/docs/guides/BACKUP_RESTORE.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/runner/work/MinIO/MinIO
+
+# Environment configuration
+Environment="BACKUP_DIR=/var/backups/minio-enterprise"
+Environment="BACKUP_TYPE=full"
+Environment="RETENTION_DAYS=30"
+Environment="ENABLE_COMPRESSION=true"
+Environment="ENABLE_ENCRYPTION=true"
+
+# Load encryption key from secure file
+# Create key file: echo "YourPassword" > /root/.minio-backup-key && chmod 600 /root/.minio-backup-key
+EnvironmentFile=-/etc/minio-enterprise/backup.env
+
+# Backup execution
+ExecStart=/home/runner/work/MinIO/MinIO/scripts/backup.sh --full
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=minio-backup
+
+# Resource limits (optional)
+# MemoryMax=4G
+# CPUQuota=50%
+
+# Restart policy
+Restart=on-failure
+RestartSec=5min
+
+[Install]
+WantedBy=multi-user.target

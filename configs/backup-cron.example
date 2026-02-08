@@ -1,0 +1,123 @@
+# MinIO Enterprise - Backup Cron Configuration Example
+#
+# Copy this file to configure automated backups:
+#   sudo cp configs/backup-cron.example /etc/cron.d/minio-backup
+#   sudo chmod 644 /etc/cron.d/minio-backup
+#
+# Or add to your crontab:
+#   crontab -e
+#   (paste relevant lines below)
+
+# Environment variables for cron jobs
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+BACKUP_DIR=/var/backups/minio-enterprise
+ENABLE_COMPRESSION=true
+ENABLE_ENCRYPTION=true
+# IMPORTANT: Set your encryption key in a secure way
+# Option 1: Set in /etc/environment or /etc/profile.d/
+# Option 2: Use a secrets management system
+# Option 3: Store in a file with restricted permissions (chmod 600)
+ENCRYPTION_KEY_FILE=/root/.minio-backup-key
+
+# ┌───────────── minute (0 - 59)
+# │ ┌───────────── hour (0 - 23)
+# │ │ ┌───────────── day of month (1 - 31)
+# │ │ │ ┌───────────── month (1 - 12)
+# │ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
+# │ │ │ │ │
+# * * * * * command to execute
+
+# ============================================================================
+# RECOMMENDED SCHEDULE (Production)
+# ============================================================================
+
+# Daily full backup at 2:00 AM
+0 2 * * * root cd /home/runner/work/MinIO/MinIO && ENCRYPTION_KEY=$(cat /root/.minio-backup-key) ./scripts/backup.sh --full >> /var/log/minio-backup.log 2>&1
+
+# Weekly S3 upload on Sunday at 3:00 AM
+0 3 * * 0 root cd /home/runner/work/MinIO/MinIO && ENCRYPTION_KEY=$(cat /root/.minio-backup-key) S3_BACKUP=true S3_ENDPOINT="https://s3.amazonaws.com" S3_BUCKET="minio-backups" ./scripts/backup.sh --full >> /var/log/minio-backup-s3.log 2>&1
+
+# ============================================================================
+# ALTERNATIVE SCHEDULES
+# ============================================================================
+
+# OPTION 1: Hourly incremental backups (high-frequency changes)
+# 0 * * * * root cd /home/runner/work/MinIO/MinIO && ENCRYPTION_KEY=$(cat /root/.minio-backup-key) ./scripts/backup.sh --incremental >> /var/log/minio-backup-hourly.log 2>&1
+
+# OPTION 2: Every 6 hours
+# 0 */6 * * * root cd /home/runner/work/MinIO/MinIO && ENCRYPTION_KEY=$(cat /root/.minio-backup-key) ./scripts/backup.sh --full >> /var/log/minio-backup.log 2>&1
+
+# OPTION 3: Business hours only (Mon-Fri, 9 AM - 5 PM, every 2 hours)
+# 0 9-17/2 * * 1-5 root cd /home/runner/work/MinIO/MinIO && ENCRYPTION_KEY=$(cat /root/.minio-backup-key) ./scripts/backup.sh --full >> /var/log/minio-backup.log 2>&1
+
+# OPTION 4: Multi-tier backup strategy
+# Daily backups (retained 7 days)
+# 0 2 * * * root cd /home/runner/work/MinIO/MinIO && RETENTION_DAYS=7 ENCRYPTION_KEY=$(cat /root/.minio-backup-key) ./scripts/backup.sh --full >> /var/log/minio-backup-daily.log 2>&1
+
+# Weekly backups on Sunday (retained 90 days)
+# 0 3 * * 0 root cd /home/runner/work/MinIO/MinIO && RETENTION_DAYS=90 ENCRYPTION_KEY=$(cat /root/.minio-backup-key) ./scripts/backup.sh --full >> /var/log/minio-backup-weekly.log 2>&1
+
+# Monthly backups on 1st of month (retained 365 days)
+# 0 4 1 * * root cd /home/runner/work/MinIO/MinIO && RETENTION_DAYS=365 ENCRYPTION_KEY=$(cat /root/.minio-backup-key) S3_BACKUP=true ./scripts/backup.sh --full >> /var/log/minio-backup-monthly.log 2>&1
+
+# ============================================================================
+# MONITORING & MAINTENANCE
+# ============================================================================
+
+# Daily backup verification at 4:00 AM (after backup completes)
+# 0 4 * * * root find /var/backups/minio-enterprise -name "minio-backup-full-$(date +\%Y\%m\%d)-*.tar.gz*" -exec /home/runner/work/MinIO/MinIO/scripts/backup.sh --verify-only {} \; >> /var/log/minio-backup-verify.log 2>&1
+
+# Weekly cleanup of old log files (every Sunday at 5:00 AM)
+# 0 5 * * 0 root find /var/log -name "minio-backup*.log" -mtime +30 -delete
+
+# Monthly disk space check (1st of month at 6:00 AM)
+# 0 6 1 * * root df -h /var/backups/minio-enterprise | mail -s "MinIO Backup Disk Space Report" admin@example.com
+
+# ============================================================================
+# IMPORTANT NOTES
+# ============================================================================
+#
+# 1. ENCRYPTION KEY STORAGE:
+#    Create a file with your encryption key:
+#      echo "YourSecureP@ssw0rd123!" > /root/.minio-backup-key
+#      chmod 600 /root/.minio-backup-key
+#      chown root:root /root/.minio-backup-key
+#
+# 2. LOG ROTATION:
+#    Configure logrotate to prevent logs from filling disk:
+#      sudo nano /etc/logrotate.d/minio-backup
+#      Add:
+#        /var/log/minio-backup*.log {
+#          daily
+#          rotate 30
+#          compress
+#          delaycompress
+#          missingok
+#          notifempty
+#        }
+#
+# 3. MONITORING:
+#    Monitor cron job execution:
+#      sudo grep CRON /var/log/syslog | grep minio
+#      tail -f /var/log/minio-backup.log
+#
+# 4. TESTING:
+#    Test cron job manually before deploying:
+#      sudo run-parts --test /etc/cron.d/
+#      sudo cron -f  # Run in foreground for debugging
+#
+# 5. S3 CREDENTIALS:
+#    For S3 backup, configure credentials:
+#      aws configure  # For AWS CLI
+#      mc alias set s3backup https://s3.amazonaws.com ACCESS_KEY SECRET_KEY  # For MinIO Client
+#
+# 6. NOTIFICATIONS:
+#    Add email notifications on failure:
+#      MAILTO=admin@example.com
+#      0 2 * * * root cd /home/runner/work/MinIO/MinIO && ./scripts/backup.sh --full || echo "Backup failed!" | mail -s "MinIO Backup Failed" admin@example.com
+#
+# 7. PERMISSIONS:
+#    Ensure scripts are executable:
+#      chmod +x /home/runner/work/MinIO/MinIO/scripts/backup.sh
+#      chmod +x /home/runner/work/MinIO/MinIO/scripts/restore.sh

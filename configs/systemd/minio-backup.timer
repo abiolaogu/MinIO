@@ -1,0 +1,20 @@
+[Unit]
+Description=MinIO Enterprise Backup Timer
+Documentation=https://github.com/abiolaogu/MinIO/blob/main/docs/guides/BACKUP_RESTORE.md
+Requires=minio-backup.service
+
+[Timer]
+# Run daily at 2:00 AM
+OnCalendar=*-*-* 02:00:00
+
+# Run on boot if missed (system was down)
+Persistent=true
+
+# Randomize start time by up to 5 minutes to avoid thundering herd
+RandomizedDelaySec=5min
+
+# Accuracy (wake system if needed)
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
