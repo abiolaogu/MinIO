@@ -1,0 +1,24 @@
+# MinIO Enterprise Backup Cron Jobs
+# Install with: sudo crontab -u root scripts/backup/backup.cron
+
+# Environment variables
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=""  # Set email for notifications
+
+# Full backup: Daily at 2:00 AM
+0 2 * * * /home/runner/work/MinIO/MinIO/scripts/backup/backup.sh full >> /var/log/minio/backup-cron.log 2>&1
+
+# Incremental backup: Every 6 hours
+0 */6 * * * /home/runner/work/MinIO/MinIO/scripts/backup/backup.sh incremental >> /var/log/minio/backup-cron.log 2>&1
+
+# Alternative schedules (uncomment as needed):
+
+# Full backup: Weekly on Sunday at 3:00 AM
+# 0 3 * * 0 /home/runner/work/MinIO/MinIO/scripts/backup/backup.sh full >> /var/log/minio/backup-cron.log 2>&1
+
+# Incremental backup: Hourly
+# 0 * * * * /home/runner/work/MinIO/MinIO/scripts/backup/backup.sh incremental >> /var/log/minio/backup-cron.log 2>&1
+
+# Backup verification: Daily at 6:00 AM
+# 0 6 * * * /home/runner/work/MinIO/MinIO/scripts/backup/verify-backup.sh >> /var/log/minio/backup-verify.log 2>&1
